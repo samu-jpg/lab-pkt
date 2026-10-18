@@ -2,38 +2,45 @@
 
 Principio rector: **el MCP es la caja de herramientas del proyecto**. Todo lo que se puede hacer
 con un lab se expone como tool MCP y el agente (Command Code, Claude, Copilot...) opera todo:
-planifica, arma la spec, genera, verifica y retoca. Sin UI propia. El mismo patron aplica a los
-proximos MCPs (video, imagen, captura): un repo = un MCP con sus tools, y las operaciones largas
-corren como jobs en segundo plano (start -> status -> resultado).
+planifica, arma la spec, genera, verifica y retoca. Sin UI propia y **sin plantillas ni topologias
+preajustadas**: los equipos, nombres, cables y direcciones los decide quien usa el MCP. El mismo
+patron aplica a los proximos MCPs (video, imagen, captura): un repo = un MCP con sus tools, y las
+operaciones largas corren como jobs en segundo plano (start -> status -> resultado).
 
 ## Estado actual (base sobre la que se construye)
 
-- Core Python: modo sedes (N sedes, topologias, routing) y modo grafo (nodos/cables explicitos,
-  IPs por interfaz, VLAN con access/trunk/SVI, router-on-a-stick).
-- Routing `static`/`rip`/`ospf`/`eigrp`/`bgp`; DHCP (pools por router + relay con Server-PT).
+- Spec **explicita**: `nodes` (equipos) + `links` (cables puerto a puerto). Sin modo "N sedes" ni
+  topologias predefinidas (se retiraron junto con los ejemplos de ejercicios).
+- Routing `static`/`rip`/`ospf`/`eigrp`/`bgp`; DHCP (pools por router + relay con Server-PT);
+  VLANs con access/trunk/SVI y router-on-a-stick; switch L3 con `ip routing`.
 - Preview SVG con iconos reales de Packet Tracer leidos de la instalacion local (no se shippean
   assets de Cisco en el repo).
 - MCP con 5 tools (`pt_schema`, `pt_list_models`, `pt_plan`, `pt_preview`, `pt_build`) y smoke
   test del servidor; CLI solo como apoyo de debug.
-- Enfoque MCP-only aplicado: la web se retiro del proyecto (solo queda en el historial de git).
 - Publicado en GitHub (`samu-jpg/lab-pkt`): vendor como submodulo fijado a `ad9c38b`, LICENSE
   GPL-3.0-or-later, metadata completa en `pyproject.toml`.
 - Tests verdes (`python3 -m pytest tests -q`).
 
-## Fase 1 — Tools nuevas (que el MCP sea la caja completa) — en curso
+## Fase 1 — Primitivas de Packet Tracer como tools (el MCP como caja completa) — en curso
 
-- `pt_inspect`: leer un `.pkt` existente y devolver resumen (equipos, IPs, configs, enlaces).
-- `pt_edit`: cargar un `.pkt`, aplicar cambios (config, IPs) y reescribirlo.
-- `pt_diff`: comparar dos specs o `.pkt` (que cambio entre versiones del lab).
-- `pt_open_in_pt`: abrir el `.pkt` generado en Packet Tracer local.
-- `pt_export`: PNG del preview (ademas de SVG) para informes/enunciados.
-- `pt_presets` + `pt_list`/`pt_clean`: plantillas de labs tipicos y gestion de `PTLAB_OUT_DIR`.
-- MCP resources (schema, catalogo, ejemplos) y prompts (lab VLAN, OSPF multiarea, ACL...).
+El MCP debe exponer las funciones de las librerias (vendor `lab_api`) para que el agente haga lo
+que quiera, sin pasar por una spec:
+
+- `pt_lab_new` / `pt_lab_open`: crear un `.pkt` vacio o abrir uno existente.
+- `pt_add_device`, `pt_remove_device`, `pt_devices`: equipos (cualquier modelo del vendor).
+- `pt_add_link`: cables copper/crossover/serial (con DCE y clock rate).
+- `pt_config`: lineas IOS crudas a un equipo (escape hatch total).
+- `pt_set_host`: IP/mask/gateway/DHCP de un host; `pt_set_wireless`: SSID/WPA2/canal.
+- `pt_set_config_register`, `pt_set_os`, `pt_install_module`: registro, imagen y modulos.
+- `pt_inspect`: leer un `.pkt` y devolver equipos, IPs, configs y enlaces.
+- `pt_models`: modelos disponibles (dinamico desde `device_templates.json`, no una lista fija).
+- `pt_diff`: comparar dos specs o `.pkt`.
+- Prompts y resources MCP (schema, catalogo, ejemplos de armado paso a paso).
 
 ## Fase 2 — Cobertura Packet Tracer (casi todo lo que se puede hacer)
 
 - Enlaces: serial DCE/DTE con clock rate, fibra, consola.
-- Switch L3 completo (3560: `ip routing`, SVIs, routing entre VLANs).
+- Switch L3 con VLANs (hoy los L3 con VLAN estan bloqueados en la spec).
 - ACLs (standard/extended/named), NAT/PAT (static, dynamic, overload).
 - Port security, STP (rapid-pvst/portfast/BPDU guard), EtherChannel (LACP/PAgP), SSH, banners,
   passwords, AAA local.
@@ -42,7 +49,6 @@ corren como jobs en segundo plano (start -> status -> resultado).
 - IoT: MCU, sensores/actuadores, home gateway, registration server.
 - Cloud/modem/ISP (Cloud-PT, DSL/cable) y firewall ASA basico.
 - IPv6: direccionamiento, SLAAC/DHCPv6, OSPFv3/EIGRPv6/IPv6 estatico.
-- Catalogo: sumar todos los device templates del vendor a la paleta.
 
 ## Fase 3 — GitHub (portafolio)
 
@@ -65,6 +71,7 @@ corren como jobs en segundo plano (start -> status -> resultado).
 
 ## Proximo paso inmediato
 
-1. `pt_inspect`/`pt_edit` (el decode del vendor ya existe) con tests y tools MCP nuevas.
-2. Primer feature nuevo de Fase 2 (serial + L3 completo) con tests.
+1. Fase 1: primitivas como tools (`pt_inspect` primero, el decode del vendor ya existe) + un test
+   por cada tool y smoke actualizado.
+2. Primer feature nuevo de Fase 2 (serial DCE/DTE + L3 con VLANs) con tests.
 3. CI + README en ingles para el portafolio.

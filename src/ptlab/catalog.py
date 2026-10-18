@@ -1,4 +1,4 @@
-"""Catalogo de equipos y puertos soportados en el MVP."""
+"""Catalogo de equipos y puertos soportados."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -9,9 +9,6 @@ L3SWITCH = "l3switch"
 HOST = "host"
 HUB = "hub"
 
-DEFAULT_ROUTER = "2911"
-DEFAULT_SWITCH = "2960-24TT"
-DEFAULT_HOST = "PC-PT"
 DEFAULT_SERVER = "Server-PT"
 
 
@@ -43,24 +40,3 @@ MODELS: dict[str, Model] = {
     # hub (puertos genericos "Port N", como los demas equipos sin interfaces numeradas)
     "Hub-PT": Model("Hub-PT", HUB, tuple(f"Port {i}" for i in range(6))),
 }
-
-
-def model_of(name: str) -> Model:
-    try:
-        return MODELS[name]
-    except KeyError:
-        raise ValueError(f"modelo no soportado: {name!r} (soportados: {', '.join(MODELS)})") from None
-
-
-def access_ports(model: str) -> list[str]:
-    """Puertos de acceso de un switch (donde cuelgan los hosts)."""
-    m = model_of(model)
-    fast = [p for p in m.ports if p.startswith("FastEthernet")]
-    return fast or list(m.ports)
-
-
-def uplink_ports(model: str) -> list[str]:
-    """Puertos de uplink de un switch (hacia routers u otros switches)."""
-    m = model_of(model)
-    gig = [p for p in m.ports if p.startswith("GigabitEthernet")]
-    return gig or list(m.ports)[-2:]

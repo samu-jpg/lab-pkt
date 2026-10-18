@@ -13,10 +13,17 @@ sys.path.insert(0, str(ROOT / "src"))
 from mcp import ClientSession, StdioServerParameters, stdio_client  # noqa: E402
 
 SPEC = (
-    "name: smoke\ntopology: ring\nsites:\n"
-    "  - {name: S1, lan: 192.168.1.0/24, hosts: 1}\n"
-    "  - {name: S2, lan: 192.168.2.0/24, hosts: 1}\n"
-    "  - {name: S3, lan: 192.168.3.0/24, hosts: 1}\n"
+    "name: smoke\nrouting: ospf\nnodes:\n"
+    "  - {name: R1, model: 2911, interfaces: [{port: GigabitEthernet0/0, ip: 10.0.0.1/30},"
+    " {port: GigabitEthernet0/1, ip: 192.168.1.1/24}]}\n"
+    "  - {name: R2, model: 2911, interfaces: [{port: GigabitEthernet0/0, ip: 10.0.0.2/30},"
+    " {port: GigabitEthernet0/1, ip: 192.168.2.1/24}]}\n"
+    "  - {name: SW1, model: 2960-24TT}\n"
+    "  - {name: PC1, model: PC-PT, ip: 192.168.1.10/24, gateway: 192.168.1.1}\n"
+    "links:\n"
+    "  - {a: R1, a_port: GigabitEthernet0/0, b: R2, b_port: GigabitEthernet0/0}\n"
+    "  - {a: R1, a_port: GigabitEthernet0/1, b: SW1, b_port: GigabitEthernet0/1}\n"
+    "  - {a: PC1, a_port: FastEthernet0, b: SW1, b_port: FastEthernet0/1}\n"
 )
 EXPECTED = {"pt_schema", "pt_list_models", "pt_plan", "pt_preview", "pt_build"}
 

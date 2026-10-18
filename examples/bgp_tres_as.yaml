@@ -1,9 +1,0 @@
-name: lab_bgp_dos_as
-topology: line
-routing: bgp
-bgp_as_base: 65000
-dhcp: true
-sites:
-  - {name: AS65010, lan: 192.168.31.0/24, hosts: 2, as_number: 65010}
-  - {name: AS65020, lan: 192.168.32.0/24, hosts: 2, as_number: 65020}
-  - {name: AS65030, lan: 192.168.33.0/24, hosts: 2, as_number: 65030}

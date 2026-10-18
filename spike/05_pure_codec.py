@@ -22,7 +22,12 @@ from ptlab.spec import parse_spec  # noqa: E402
 
 
 def main() -> None:
-    spec = parse_spec((ROOT / "examples" / "ring_4_sites.yaml").read_text(encoding="utf-8"))
+    spec = parse_spec(
+        "name: spike\nrouting: ospf\nnodes:\n"
+        "  - {name: R1, model: 2911, interfaces: [{port: GigabitEthernet0/0, ip: 10.0.0.1/30}]}\n"
+        "  - {name: R2, model: 2911, interfaces: [{port: GigabitEthernet0/0, ip: 10.0.0.2/30}]}\n"
+        "links:\n  - {a: R1, a_port: GigabitEthernet0/0, b: R2, b_port: GigabitEthernet0/0}\n"
+    )
     out = build(plan(spec), "/tmp/ptlab_pure.pkt")
     raw = out.read_bytes()
 
