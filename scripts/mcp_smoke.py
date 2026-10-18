@@ -58,6 +58,8 @@ EXPECTED = {
     "pt_nat_static",
     "pt_nat_overload",
     "pt_nat_interface",
+    "pt_activity",
+    "pt_harvest",
 }
 
 
@@ -73,6 +75,7 @@ async def main() -> int:
     env = dict(os.environ)
     env["PYTHONPATH"] = str(ROOT / "src")
     env["PTLAB_OUT_DIR"] = os.environ.get("PTLAB_OUT_DIR", "/mnt/d/PT-Labs")
+    env["PTLAB_LIB"] = os.environ.get("PTLAB_LIB", str(Path(env["PTLAB_OUT_DIR"]) / "lib.json"))
     params = StdioServerParameters(
         command=sys.executable, args=["-m", "ptlab.mcp_server"], env=env, cwd=str(ROOT)
     )
@@ -142,6 +145,16 @@ async def main() -> int:
                 ),
                 ("pt_rename_device", {"path": "mcp_smoke_lab", "device": "R2", "new_name": "R-BORDE"}),
                 ("pt_set_power", {"path": "mcp_smoke_lab", "device": "R-BORDE", "on": False}),
+                ("pt_harvest", {"source": "mcp_smoke_lab"}),
+                (
+                    "pt_activity",
+                    {
+                        "initial": "mcp_smoke_lab",
+                        "answer": "mcp_smoke_lab",
+                        "name": "mcp_smoke_act",
+                        "instructions": ["<p>Smoke</p>"],
+                    },
+                ),
                 ("pt_inspect", {"path": "mcp_smoke_lab"}),
             ]
             for name, args in calls:

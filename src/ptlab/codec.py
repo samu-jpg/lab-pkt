@@ -1,11 +1,17 @@
 """Codec .pkt/.pka sobre pkt_core (Python puro: corre sin libgcrypt ni binarios).
 
 Expone la misma interfaz que `pt9` (la que usa el `lab_api` del vendor), para poder
-usarlo como reemplazo portable.
+usarlo como reemplazo portable. Se deja `pkt_core` en el path por su cuenta.
 """
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+
+_VENDOR = Path(__file__).resolve().parents[2] / "vendor" / "packet-tracer-pkt-format"
+for _path in (str(_VENDOR / "src"), str(_VENDOR)):
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
 
 from pkt_core import PacketTracerError
 from pkt_core import decode as _decode

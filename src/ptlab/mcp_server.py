@@ -22,7 +22,9 @@ from pathlib import Path
 
 from mcp.server.mcpserver import MCPServer
 
+from ptlab import activity as ptlab_activity
 from ptlab import lab as labfile
+from ptlab import library as ptlab_library
 from ptlab.builder import build
 from ptlab.catalog import MODELS
 from ptlab.planner import Plan, plan
@@ -455,6 +457,58 @@ def pt_nat_interface(path: str, device: str, port: str, side: str = "inside") ->
     """Marca una interfaz del equipo como `ip nat inside` / `ip nat outside`."""
     labfile.nat_interface(_lab_out(path), device, port, side)
     return f"{device}: {port} nat {side}"
+
+
+# --------------------------------------------------------------------------- #
+#  Actividades .pka y libreria local
+# --------------------------------------------------------------------------- #
+
+
+@mcp.tool()
+def pt_activity(
+    initial: str,
+    answer: str = "",
+    name: str = "actividad",
+    instructions: list[str] | None = None,
+    title: str = "",
+    password: str = "",
+    locked: bool = False,
+    noguest: bool = False,
+    components: str = "",
+    timer: int = 0,
+) -> str:
+    """Genera un .pka: red inicial (`initial`), resuelta (`answer`), consigna y permisos.
+
+    `instructions`: paginas HTML de la consigna; `password`: clave al abrir; `components`:
+    "Ip, Routing, Acl"; `timer`: cuenta regresiva en segundos; `locked`/`noguest`: perfil.
+    """
+    out = ptlab_activity.new_activity(
+        _lab_out(initial),
+        OUT_DIR / f"{name}.pka",
+        answer=_lab_out(answer) if answer else None,
+        instructions=instructions,
+        title=title,
+        password=password,
+        locked=locked,
+        noguest=noguest,
+        components=components,
+        timer=timer,
+    )
+    return f"actividad: {out}"
+
+
+@mcp.tool()
+def pt_harvest(source: str) -> str:
+    """Cosecha los modelos de equipos de un .pkt (o carpeta) a la libreria local.
+
+    Despues `pt_add_device` acepta esos modelos como cualquier otro.
+    """
+    src = Path(source).expanduser()
+    if not src.is_dir():
+        src = _lab_out(source)
+    result = ptlab_library.harvest(src)
+    extra = f"\nnuevos: {', '.join(result['new'])}" if result["new"] else ""
+    return f"libreria: {result['path']}\nmodelos: {', '.join(result['models'])}{extra}"
 
 
 def main() -> None:

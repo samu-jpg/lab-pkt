@@ -19,26 +19,30 @@ operaciones largas corren como jobs en segundo plano (start -> status -> resulta
   clientes), y toggles/campos para TFTP, NTP, email y syslog.
 - **ACL/NAT**: ACL standard/extended numerada o con nombre, `ip access-group`, NAT estatico, PAT
   (overload) e `ip nat inside/outside`.
+- **Actividades `.pka`**: `pt_activity` arma el archivo con consigna (HTML), password, permisos,
+  timer y las redes inicial/respuesta desde dos `.pkt`. El arbol de correccion (scoring) queda
+  afuera: el vendor lo deriva de nodos de una actividad de referencia (pendiente hasta tener una).
+- **Libreria local**: `pt_harvest` cosecha modelos desde tus propios `.pkt` a `PTLAB_LIB`
+  (por defecto `~/.ptlab/device_templates.json`) y se mergean sobre el catalogo del vendor.
+- IoT: los equipos (Thing, MCU-PT, SBC-PT...) se pueden agregar y configurar en red/wireless; la
+  programacion del MCU y el registro en el servidor IoT se hacen dentro de PT (no estan en el
+  formato del archivo).
 - Routing `static`/`rip`/`ospf`/`eigrp`/`bgp`; DHCP (pools por router + relay); VLANs con
   access/trunk/SVI y router-on-a-stick; switch L3 con `ip routing` (todo esto en la spec).
 - Preview SVG con iconos reales de Packet Tracer leidos de la instalacion local.
-- 57 tests verdes (un test por primitiva y por funcion del planner) + smoke del MCP (32 tools).
+- 61 tests verdes (un test por primitiva y por funcion del planner) + smoke del MCP (34 tools).
 - Publicado en GitHub (`samu-jpg/lab-pkt`): vendor como submodulo fijado a `ad9c38b`, LICENSE
   GPL-3.0-or-later, metadata completa en `pyproject.toml`.
 
 ## Fase 2 — Cobertura Packet Tracer (lo que queda)
 
-- Actividades `.pka`: el vendor trae `activity.py` (instrucciones, password, permisos, red inicial
-  y de respuesta) y `scoring.py` (arbol de correccion clonando nodos de una actividad de
-  referencia). Requiere un `.pka` de referencia propio; usar solo para labs propios (ver Legal).
-- Harvest de modelos: `harvest_library.py` extrae plantillas de tus propios `.pkt`, para sumar
-  equipos que no vengan en el template del vendor.
-- IoT (MCU, sensores/actuadores ya agregables; falta la programacion del MCU y el registro en el
-  servidor IoT) y VoIP (telefonos IP).
+- Scoring de `.pka`: `scoring.py` del vendor clona nodos de item de una actividad de referencia;
+  cuando haya un `.pka` de referencia a mano se expone `pt_activity(scoring=...)`.
 - WLC 3504 y seguridad inalambrica avanzada (hoy: SSID/canal/password en AP y clientes).
+- Programacion de MCU / registro en servidor IoT (esta en el runtime de PT, no en el archivo).
+- VoIP (telefonos IP) y Cloud/modem/ISP (Cloud-PT, DSL/cable); firewall ASA basico.
 - En la spec: cable serial y switch L3 con VLANs (en las primitivas ya funcionan).
 - IPv6: direccionamiento, SLAAC/DHCPv6, OSPFv3/EIGRPv6.
-- Cloud/modem/ISP (Cloud-PT, DSL/cable) y firewall ASA basico.
 
 ## Fase 3 — GitHub (portafolio)
 
@@ -63,6 +67,6 @@ operaciones largas corren como jobs en segundo plano (start -> status -> resulta
 
 ## Proximo paso inmediato
 
-1. Fase 2: actividades `.pka` + harvest de modelos + IoT, con tests.
-2. CI (GitHub Actions) + README en ingles para el portafolio.
-3. Arrancar el segundo MCP (video-mcp) con la misma estructura.
+1. CI (GitHub Actions) + README en ingles para el portafolio.
+2. Arrancar el segundo MCP (video-mcp) con la misma estructura.
+3. Scoring de `.pka` cuando haya una actividad de referencia.

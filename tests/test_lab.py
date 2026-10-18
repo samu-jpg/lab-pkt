@@ -295,3 +295,71 @@ def test_nat_primitives(tmp_path):
     assert "ip nat inside source static 192.168.1.10 200.1.1.10" in cfg
     assert "ip nat inside source list 100 interface GigabitEthernet0/0 overload" in cfg
     assert " ip nat outside" in cfg and " ip nat inside" in cfg
+
+
+def test_new_activity(tmp_path):
+    import re
+
+    from ptlab import activity
+
+    p = lab.new(tmp_path / "practica.pkt")
+    lab.add_device(p, "2911", "R1")
+    a = lab.new(tmp_path / "resuelto.pkt")
+    lab.add_device(a, "2911", "R1", config=["hostname R1"])
+    out = activity.new_activity(
+        p,
+        tmp_path / "act.pka",
+        answer=a,
+        instructions=["<h3>Tarea</h3><p>Configura R1</p>"],
+        password="clave",
+        locked=True,
+        components="Ip, Routing",
+        timer=600,
+    )
+    xml = codec.decode_bytes(out.read_bytes()).decode("utf-8", "replace")
+    assert "<PACKETTRACER5_ACTIVITY>" in xml
+    blocks = re.findall(r"<PACKETTRACER5>.*?</PACKETTRACER5>", xml, re.S)
+    assert len(blocks) == 3
+    assert "hostname R1" not in blocks[1] and "hostname R1" in blocks[2]
+    assert "Configura R1" in xml and 'PASS="clave"' in xml
+    assert "<COMPONENT_LIST>Ip, Routing</COMPONENT_LIST>" in xml
+
+
+def test_harvest_and_use_local_model(tmp_path, monkeypatch):
+    from ptlab import library
+
+    monkeypatch.setenv("PTLAB_LIB", str(tmp_path / "lib.json"))
+    p = _new(tmp_path)
+    lab.add_device(p, "2911", "R1")
+    xml = codec.decode(p).replace(b'model="2911"', b'model="2911X"', 1)
+    codec.encode(p, xml)
+    result = library.harvest(p)
+    assert result["models"] == ["2911X"] and result["new"] == ["2911X"]
+    lab.add_device(p, "2911X", "R2")
+    assert lab.device_names(p) == ["R1", "R2"]
+
+
+def test_iot_models_can_be_added(tmp_path):
+    p = _new(tmp_path)
+    lab.add_device(p, "MCU-PT", "MCU1")
+    lab.add_device(p, "Thing", "TH1")
+    lab.add_device(p, "SBC-PT", "SBC1")
+    assert lab.device_names(p) == ["MCU1", "TH1", "SBC1"]
+    lab.set_wireless(p, "TH1", ssid="IOTLAB")
+    assert "IOTLAB" in _xml(p)
+
+
+def test_mcp_server_imports_standalone():
+    import os
+    import subprocess
+    import sys
+
+    env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
+    proc = subprocess.run(
+        [sys.executable, "-c", "import ptlab.mcp_server"],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=str(ROOT),
+    )
+    assert proc.returncode == 0, proc.stderr

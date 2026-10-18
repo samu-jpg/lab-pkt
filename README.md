@@ -16,6 +16,11 @@ quien usa el MCP.
   config-register, OS) e inspeccionar labs existentes.
 - **Servicios y seguridad**: servicios del Server-PT (HTTP/HTTPS, DNS, TFTP, NTP, email, syslog,
   AAA/RADIUS, DHCP con pools) y ACL/NAT (estatico, overload) como tools.
+- **Actividades `.pka`**: practica guiada (consigna HTML, red inicial y resuelta, password,
+  permisos y timer). Sin arbol de correccion: eso el vendor lo deriva de una actividad de
+  referencia que hay que tener a mano.
+- **Libreria local**: cosecha modelos de tus propios `.pkt` (`pt_harvest`) y desde ahi
+  `pt_add_device` los acepta como cualquier otro.
 - Catalogo: routers (2911/1941/2901/2811), switches L2 (2960-24TT/2950-24), switch L3 (3560-24PS),
   hosts (PC-PT/Server-PT/Laptop-PT) y Hub-PT; las primitivas aceptan **todos** los modelos del
   template del vendor (100+).
@@ -70,6 +75,10 @@ El agente conversa y opera todo por tools.
   registros DNS y usuarios/clientes AAA (RADIUS) del Server-PT.
 - `pt_add_acl` / `pt_apply_acl` — ACL standard/extended (numerada o con nombre) y `ip access-group`.
 - `pt_nat_static`, `pt_nat_overload`, `pt_nat_interface` — NAT estatico, PAT y `ip nat inside/outside`.
+
+**Actividades y libreria local:**
+- `pt_activity` — arma un `.pka` con red inicial/resuelta, consigna, password, permisos y timer.
+- `pt_harvest` — cosecha modelos de tus `.pkt` a la libreria local (`pt_add_device` los acepta).
 
 Ejemplo de registro en Command Code (`cmd mcp add`):
 ```bash
@@ -151,7 +160,8 @@ equipo y la config de red de los hosts; Packet Tracer los aplica al abrir.
 
 ## Estructura
 ```
-src/ptlab/     catalog, spec, planner, ios, builder, preview, lab, vendorlib, cli, mcp_server
+src/ptlab/     spec, planner, builder, ios, preview, lab, activity, library, vendorlib,
+               codec, catalog, cli, mcp_server
 vendor/        packet-tracer-pkt-format (submodulo, GPL-3.0) — codec y plantillas reusadas
 docs/          roadmap
 spike/         pruebas de viabilidad del codec
