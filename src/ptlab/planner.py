@@ -470,7 +470,7 @@ def plan(spec: Spec) -> Plan:
 
 
 # --------------------------------------------------------------------------- #
-#  Modo grafo: nodos y enlaces explicitos (editor visual)                     #
+#  Modo grafo: nodos y enlaces explicitos                                     #
 # --------------------------------------------------------------------------- #
 
 _LAYER_Y = {ROUTER: 150.0, L3SWITCH: 150.0, SWITCH: 340.0, HUB: 340.0}

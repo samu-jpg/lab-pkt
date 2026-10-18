@@ -194,7 +194,7 @@ def test_multi_lan_port_limit():
         plan(parse_spec(spec))
 
 
-# ---------------------------- modo grafo (editor visual) ---------------------------- #
+# ---------------------------- modo grafo (nodos y cables) --------------------------- #
 
 GRAPH = """
 name: g
@@ -387,10 +387,3 @@ def test_plan_graph_crossover_cable(tmp_path):
     out = build(plan(parse_spec(spec)), tmp_path / "x.pkt")
     xml = pt9.decode_bytes(out.read_bytes(), "pkt").decode("utf-8", "replace")
     assert "eCrossOver" in xml
-
-
-def test_graph_preview_stats_by_role():
-    from ptlab.preview import plan_stats
-
-    stats = plan_stats(plan(parse_spec(GRAPH)))
-    assert stats == {"routers": 1, "switches": 1, "hubs": 0, "hosts": 1, "links": 2}

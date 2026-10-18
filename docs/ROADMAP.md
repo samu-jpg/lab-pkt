@@ -2,9 +2,9 @@
 
 Principio rector: **el MCP es la caja de herramientas del proyecto**. Todo lo que se puede hacer
 con un lab se expone como tool MCP y el agente (Command Code, Claude, Copilot...) opera todo:
-planifica, arma la spec, genera, verifica y retoca. No hay UI propia: la web se retira. El mismo
-patron aplica a los proximos MCPs (video, imagen, captura): un repo = un MCP con sus tools, y las
-operaciones largas corren como jobs en segundo plano (start -> status -> resultado).
+planifica, arma la spec, genera, verifica y retoca. Sin UI propia. El mismo patron aplica a los
+proximos MCPs (video, imagen, captura): un repo = un MCP con sus tools, y las operaciones largas
+corren como jobs en segundo plano (start -> status -> resultado).
 
 ## Estado actual (base sobre la que se construye)
 
@@ -13,25 +13,17 @@ operaciones largas corren como jobs en segundo plano (start -> status -> resulta
 - Routing `static`/`rip`/`ospf`/`eigrp`/`bgp`; DHCP (pools por router + relay con Server-PT).
 - Preview SVG con iconos reales de Packet Tracer leidos de la instalacion local (no se shippean
   assets de Cisco en el repo).
-- CLI + MCP con 5 tools (`pt_schema`, `pt_list_models`, `pt_plan`, `pt_preview`, `pt_build`) y
-  smoke test del servidor.
-- Web FastAPI (editor visual + formulario) — **a retirar**.
-- 34 tests verdes. No hay git todavia; el vendor es un repo git anidado (GPL-3.0).
+- MCP con 5 tools (`pt_schema`, `pt_list_models`, `pt_plan`, `pt_preview`, `pt_build`) y smoke
+  test del servidor; CLI solo como apoyo de debug.
+- Enfoque MCP-only aplicado: la web se retiro del proyecto (solo queda en el historial de git).
+- Publicado en GitHub (`samu-jpg/lab-pkt`): vendor como submodulo fijado a `ad9c38b`, LICENSE
+  GPL-3.0-or-later, metadata completa en `pyproject.toml`.
+- Tests verdes (`python3 -m pytest tests -q`).
 
-## Fase 0 — Enfoque MCP-only
+## Fase 1 — Tools nuevas (que el MCP sea la caja completa) — en curso
 
-- `git init` + commit inicial (protege todo antes de tocar nada). Decision de vendor: submodulo
-  (recomendado) o carpeta ignorada con instrucciones de instalacion.
-- Retirar `web/` (app.py + static) y la seccion "Uso — web local" del README. El CLI se queda como
-  herramienta de debug local (no es UI).
-- Descartar el plan del editor visual web (`ptlab-editor-visual.md`).
-- README MCP-first: las tools como interfaz principal, con ejemplos de uso reales.
-
-## Fase 1 — Tools nuevas (que el MCP sea la caja completa)
-
-- `pt_inspect`: leer un `.pkt` existente y devolver resumen (equipos, IPs, configs). El codec ya
-  soporta decode (`pkt_core`); falta la capa de inspeccion.
-- `pt_edit` / `pt_apply`: cargar un `.pkt`, aplicar cambios (config, IPs, enlaces) y reescribirlo.
+- `pt_inspect`: leer un `.pkt` existente y devolver resumen (equipos, IPs, configs, enlaces).
+- `pt_edit`: cargar un `.pkt`, aplicar cambios (config, IPs) y reescribirlo.
 - `pt_diff`: comparar dos specs o `.pkt` (que cambio entre versiones del lab).
 - `pt_open_in_pt`: abrir el `.pkt` generado en Packet Tracer local.
 - `pt_export`: PNG del preview (ademas de SVG) para informes/enunciados.
@@ -54,14 +46,13 @@ operaciones largas corren como jobs en segundo plano (start -> status -> resulta
 
 ## Fase 3 — GitHub (portafolio)
 
-- LICENSE GPL-3.0-or-later en la raiz (por el vendor) y metadata en `pyproject.toml` (authors,
-  urls, license, classifiers). `.gitignore`.
+- Hecho: repo creado, vendor como submodulo, LICENSE, `.gitignore`, metadata de `pyproject.toml`.
 - CI (GitHub Actions): `pytest` + smoke del MCP en Python 3.10-3.13.
-- README publico (es/en), demo (GIF/SVG del preview), badges, topics, CONTRIBUTING, releases.
+- README publico (es/en) con demo (GIF/SVG del preview), badges, topics, CONTRIBUTING, releases.
 - Sin assets de Cisco en el repo; atribucion del vendor GPL y su origen.
-- Opcional: publicar en PyPI y registrar el MCP en el MCP registry para que sea descubrible.
+- Opcional: publicar en PyPI y registrar el MCP en el MCP registry.
 
-## Fase 4 — Otros MCPs (mismo patron: tools + jobs en segundo plano, sin web)
+## Fase 4 — Otros MCPs (mismo patron: tools + jobs en segundo plano, sin UI propia)
 
 - **video-mcp** (ffmpeg): probe/inspect, cortar, unir, convertir, comprimir, extraer frames/audio,
   GIF, subtitulos, thumbnails; lo largo corre como job con estado.
@@ -72,9 +63,8 @@ operaciones largas corren como jobs en segundo plano (start -> status -> resulta
 - Estandar comun: layout `src/`, tests, ruff, README con demo, CI, licencia permisiva
   (MIT/Apache-2.0 salvo que se reutilice codigo GPL), PyPI + MCP registry.
 
-## Proximo paso inmediato (al retomar)
+## Proximo paso inmediato
 
-1. `git init` + commit inicial.
-2. Retirar `web/` y reescribir el README MCP-first.
-3. `pt_inspect`/`pt_edit` (el decode del vendor ya existe).
-4. Primer feature nuevo de Fase 2 (serial + L3 completo) con tests.
+1. `pt_inspect`/`pt_edit` (el decode del vendor ya existe) con tests y tools MCP nuevas.
+2. Primer feature nuevo de Fase 2 (serial + L3 completo) con tests.
+3. CI + README en ingles para el portafolio.

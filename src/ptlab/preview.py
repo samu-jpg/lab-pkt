@@ -3,21 +3,17 @@
 Usa los PNG del canvas logico de Packet Tracer (art/Workspace/Logical), incrustados en el
 SVG como data-URI y deduplicados con <defs>/<use>. Si no encuentra el arte de PT, cae a
 iconos esquematicos.
-
-El nodo raiz lleva `data-stats` con el resumen del plan (equipos por tipo y enlaces), para
-que la web lo muestre sin replanificar.
 """
 from __future__ import annotations
 
 import base64
-import json
 import os
 import struct
 from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
 
-from ptlab.catalog import HOST, HUB, L3SWITCH, MODELS, ROUTER, SWITCH
+from ptlab.catalog import HOST, HUB, L3SWITCH, ROUTER, SWITCH
 from ptlab.planner import Plan
 
 PT_ART = Path(os.environ.get("PTLAB_PT_ART", "/mnt/d/Cisco Packet Tracer 9.0.1/art/Workspace/Logical"))
@@ -71,31 +67,6 @@ def _fallback_icon(role: str, model: str, x: float, y: float) -> str:
     )
 
 
-def plan_stats(plan: Plan) -> dict[str, int]:
-    """Equipos por tipo (segun el rol del modelo, sirven nombres arbitrarios) y enlaces."""
-    stats = {"routers": 0, "switches": 0, "hubs": 0, "hosts": 0, "links": len(plan.links)}
-    for d in plan.devices:
-        if d.role in (ROUTER, L3SWITCH):
-            stats["routers"] += 1
-        elif d.role == SWITCH:
-            stats["switches"] += 1
-        elif d.role == HUB:
-            stats["hubs"] += 1
-        else:
-            stats["hosts"] += 1
-    return stats
-
-
-def icon_data_uris() -> dict[str, str]:
-    """Iconos PT por modelo (data-URI PNG), para el canvas del editor web."""
-    out: dict[str, str] = {}
-    for model in MODELS.values():
-        asset = _icon_asset(model.role, model.name)
-        if asset:
-            out[model.name] = asset[1]
-    return out
-
-
 def render_svg(plan: Plan, aggregate_over: int = _AGGREGATE_OVER) -> str:
     byname = {d.name: d for d in plan.devices}
 
@@ -144,9 +115,8 @@ def render_svg(plan: Plan, aggregate_over: int = _AGGREGATE_OVER) -> str:
             key, uri, iw, ih = asset
             assets.setdefault(key, (uri, iw, ih))
 
-    stats = json.dumps(plan_stats(plan), separators=(",", ":"))
     out = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" data-stats=\'{stats}\' '
+        f'<svg xmlns="http://www.w3.org/2000/svg" '
         f'viewBox="{min_x:.0f} {min_y:.0f} {w:.0f} {h:.0f}" '
         f'width="{w:.0f}" height="{h:.0f}" font-family="system-ui, sans-serif">',
         "<defs>",

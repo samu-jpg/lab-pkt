@@ -4,9 +4,9 @@ Asistente que disena topologias de red y **genera archivos `.pkt`** para **Cisco
 sin abrir Packet Tracer: describe la topologia (o deja que un agente LLM la describa), mira el
 preview y baja un `.pkt` que **ya trae los equipos cableados y configurados**.
 
-Nace como "asistente de topologias": vos decis que queres, el agente (o vos) arma la spec, y el
-motor genera el archivo. El "cerebro" no esta metido en la app: se expone por **MCP**, asi que
-lo maneja el agente que ya tengas (Command Code, Claude, Copilot...), sin costo extra de LLM.
+El MCP es la caja de herramientas del proyecto: todo se expone como tools y lo opera el agente
+que ya tengas (Command Code, Claude, Copilot...), sin costo extra de LLM. No hay UI propia: el
+agente conversa, arma la spec y llama a las tools.
 
 ## Alcance actual
 - N sedes, cada una con router + una o mas **LANs** (switch + hosts).
@@ -15,8 +15,8 @@ lo maneja el agente que ya tengas (Command Code, Claude, Copilot...), sin costo 
 - Routing: `none`, `static` (rutas calculadas), `rip` (v2), `ospf`, `eigrp` o `bgp` (eBGP, AS por sede).
 - Hosts estaticos o por **DHCP**: pools en cada router, o **DHCP relay** con un `Server-PT`
   central y `ip helper-address` en las demas LANs.
-- Preview **SVG** del plano (iconos reales de Packet Tracer) y web local con plantillas.
-- **Modo grafo (editor visual, sin IA)**: nodos y cables explicitos — routers, switches L2/L3,
+- Preview **SVG** del plano (iconos reales de Packet Tracer).
+- **Modo grafo (sin IA)**: nodos y cables explicitos — routers, switches L2/L3,
   hosts (PC/laptop/server) y hub; IPs por interfaz, routing global o por equipo, DHCP (pools o
   Server-PT con relay) y **VLANs con access / trunk / SVI y router-on-a-stick (dot1Q)**.
 
@@ -27,30 +27,24 @@ lo maneja el agente que ya tengas (Command Code, Claude, Copilot...), sin costo 
 
 ## Instalacion
 ```bash
-cd ~/proyectos/pt-lab-assistant
-pip install -e .
+git clone --recurse-submodules git@github.com:samu-jpg/lab-pkt.git
+cd lab-pkt
+pip install -e ".[mcp]"
 ```
-El proyecto reutiliza (en `vendor/`) el codec/generador GPL-3.0 `packet-tracer-pkt-format`.
-Por eso el proyecto es **GPL-3.0-or-later**.
+El extra `mcp` instala el SDK del servidor MCP. El proyecto reutiliza el codec/generador
+GPL-3.0 `packet-tracer-pkt-format`, integrado como **submodulo** en `vendor/`
+(si clonaste sin submodulos: `git submodule update --init`). Por eso el proyecto es
+**GPL-3.0-or-later**.
 
-## Uso — CLI
-```bash
-ptlab build examples/two_sites.yaml -o /mnt/d/PT-Labs/two_sites.pkt   # genera el .pkt
-ptlab preview examples/two_sites.yaml -o /mnt/d/PT-Labs/two_sites.svg # preview
-ptlab schema                                                          # campos de la spec
-```
-El `.pkt` queda en una carpeta accesible desde Windows (por defecto salida en `/mnt/d/PT-Labs`).
+## Uso — servidor MCP (interfaz principal)
+El agente conversa, arma la spec y llama a las tools. Comando del server (tras la instalacion):
+`ptlab-mcp` (o `python3 -m ptlab.mcp_server`).
 
-## Uso — servidor MCP (recomendado)
-Expone la generacion como tools para cualquier cliente MCP. El agente conversa, arma la spec y
-llama a las tools:
-- `pt_schema` — JSON schema de la spec.
-- `pt_list_models` — modelos de equipos soportados.
+- `pt_schema` — JSON schema de la spec (que campos acepta).
+- `pt_list_models` — modelos de equipos soportados, su rol y cantidad de puertos.
 - `pt_plan` — valida/planifica y muestra el resumen con direccionamiento.
 - `pt_preview` — genera el SVG.
 - `pt_build` — genera el `.pkt`.
-
-Comando del server (tras `pip install -e .`): `ptlab-mcp`  (o `python3 -m ptlab.mcp_server`).
 
 Ejemplo de registro en Command Code (`cmd mcp add`):
 ```bash
@@ -62,22 +56,13 @@ O en `.mcp.json`:
 ```
 Mismo patron para Claude Code / Copilot / Cursor (transport stdio).
 
-## Uso — web local (opcional)
+## Uso — CLI (apoyo para debug)
 ```bash
-python3 -m uvicorn app:app --app-dir web --port 8756
-# abrir http://127.0.0.1:8756
+ptlab build examples/two_sites.yaml -o /mnt/d/PT-Labs/two_sites.pkt   # genera el .pkt
+ptlab preview examples/two_sites.yaml -o /mnt/d/PT-Labs/two_sites.svg # preview
+ptlab schema                                                          # campos de la spec
 ```
-Dos pestanas:
-
-- **Editor** (recomendado): arma la topologia a mano en el plano. Paleta para agregar equipos,
-  drag para ordenarlos, boton *Conectar equipos* para cablear puerto a puerto, panel de
-  propiedades por equipo (IPs, VLANs/trunk/SVI, routing, DHCP, config extra) y menu de
-  enrutamiento global. El boton **Vista previa** abre el plano oficial (iconos PT reales) donde
-  podes **cambiar el orden de los equipos y reconectar cables**: eso mismo es lo que se usa para
-  **Generar .pkt**. El estado se autoguarda en el navegador y se puede Exportar/Importar (JSON/YAML).
-- **Rapido**: el formulario parametrico de N sedes (plantillas incluidas), preview en vivo con
-  zoom/pan, pestana YAML para specs a mano y descarga del `.pkt`. El YAML se puede traer de vuelta
-  al formulario, y el resumen de equipos/enlaces sale del propio SVG (`data-stats`).
+El `.pkt` queda en una carpeta accesible desde Windows (por defecto salida en `/mnt/d/PT-Labs`).
 
 ## Formato de la spec
 ```yaml
@@ -170,9 +155,9 @@ equipo y la config de red de los hosts; Packet Tracer los aplica al abrir.
 ## Estructura
 ```
 src/ptlab/     catalog, spec, planner, ios, builder, preview, cli, mcp_server
-web/           app.py (FastAPI) + static/ (index.html, app.js, editor.js, styles.css)
-vendor/        packet-tracer-pkt-format (GPL-3.0) — codec y plantillas reusadas
+vendor/        packet-tracer-pkt-format (submodulo, GPL-3.0) — codec y plantillas reusadas
 examples/      specs de ejemplo
+docs/          roadmap
 spike/         pruebas de viabilidad del codec
 ```
 
@@ -181,7 +166,8 @@ spike/         pruebas de viabilidad del codec
 - En modo grafo quedan pendientes el cable serial y el switch L3 con VLANs.
 - El DHCP del `Server-PT` se configura con pools y gateway/DNS; sin reservas ni opciones extra.
 - Sin deploy "live" directo a Packet Tracer (por ahora es por archivo).
-- Ver tambien el plan en `~/.commandcode/plans/pt-lab-assistant.md`.
+- Roadmap completo (tools nuevas como inspeccion/edicion de `.pkt`, cobertura PT y otros MCPs)
+  en `docs/ROADMAP.md`.
 
 ## Legal
 Reutiliza un proyecto de ingenieria inversa del formato `.pkt`. Uso con **archivos propios**, para

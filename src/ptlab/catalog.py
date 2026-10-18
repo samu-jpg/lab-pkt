@@ -45,14 +45,6 @@ MODELS: dict[str, Model] = {
 }
 
 
-def palette() -> dict[str, list[Model]]:
-    """Modelos agrupados por rol (paleta del editor web)."""
-    groups: dict[str, list[Model]] = {}
-    for model in MODELS.values():
-        groups.setdefault(model.role, []).append(model)
-    return groups
-
-
 def model_of(name: str) -> Model:
     try:
         return MODELS[name]
