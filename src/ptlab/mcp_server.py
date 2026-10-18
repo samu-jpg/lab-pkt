@@ -2,9 +2,13 @@
 
 Dos familias de tools:
 - spec -> .pkt/.svg: `pt_schema`, `pt_list_models`, `pt_plan`, `pt_preview`, `pt_build`.
-- primitivas sobre un .pkt: `pt_new`, `pt_devices`, `pt_add_device`, `pt_add_link`, `pt_config`,
-  `pt_set_host`, `pt_set_dhcp`, `pt_set_wireless`, `pt_set_config_register`, `pt_set_os`,
-  `pt_install_module`, `pt_remove_device`, `pt_inspect`.
+- primitivas sobre un .pkt: `pt_new`, `pt_devices`, `pt_add_device`, `pt_remove_device`,
+  `pt_clone_device`, `pt_rename_device`, `pt_move_device`, `pt_set_power`, `pt_add_link`,
+  `pt_config`, `pt_set_host`, `pt_set_dhcp`, `pt_set_wireless`, `pt_set_config_register`,
+  `pt_set_os`, `pt_install_module`, `pt_inspect`.
+- servicios y seguridad: `pt_set_service`, `pt_add_dhcp_pool`, `pt_add_dns_record`,
+  `pt_add_aaa_user`, `pt_add_aaa_client`, `pt_add_acl`, `pt_apply_acl`, `pt_nat_static`,
+  `pt_nat_overload`, `pt_nat_interface`.
 
 No hay plantillas de topologia: el agente decide equipos, nombres, cables y configs.
 Las salidas por defecto van a PTLAB_OUT_DIR (por defecto /mnt/d/PT-Labs).
@@ -308,6 +312,149 @@ def pt_remove_device(path: str, device: str) -> str:
 def pt_inspect(path: str) -> str:
     """Lee un .pkt: equipos (modelo, IP, config, pools, wireless) y enlaces."""
     return _inspect_text(labfile.inspect(_lab_out(path)))
+
+
+# --------------------------------------------------------------------------- #
+#  Edicion de equipos, servicios, ACL/NAT
+# --------------------------------------------------------------------------- #
+
+
+@mcp.tool()
+def pt_rename_device(path: str, device: str, new_name: str) -> str:
+    """Renombra un equipo (los cables no se tocan: referencian un id interno)."""
+    labfile.rename_device(_lab_out(path), device, new_name)
+    return f"{device} -> {new_name}"
+
+
+@mcp.tool()
+def pt_move_device(path: str, device: str, x: int, y: int) -> str:
+    """Mueve un equipo en el plano logico."""
+    labfile.move_device(_lab_out(path), device, x, y)
+    return f"{device}: x={x} y={y}"
+
+
+@mcp.tool()
+def pt_set_power(path: str, device: str, on: bool = True) -> str:
+    """Prende/apaga un equipo (apagado, sus puertos quedan abajo)."""
+    labfile.set_power(_lab_out(path), device, on)
+    return f"{device}: {'on' if on else 'off'}"
+
+
+@mcp.tool()
+def pt_clone_device(path: str, source: str, name: str, x: int = -1, y: int = -1) -> str:
+    """Duplica un equipo (config incluida) con nombre nuevo; sin x/y queda al lado del original."""
+    out = _lab_out(path)
+    labfile.clone_device(out, source, name, x=None if x < 0 else x, y=None if y < 0 else y)
+    return f"clonado: {source} -> {name}\nequipos: {', '.join(labfile.device_names(out))}"
+
+
+@mcp.tool()
+def pt_set_service(
+    path: str,
+    device: str,
+    service: str,
+    enable: bool = True,
+    fields: dict[str, str] | None = None,
+) -> str:
+    """Prende/apaga y configura un servicio del equipo.
+
+    service: http | https | dns | tftp | ntp | syslog | email | aaa | dhcp.
+    `fields` pisa etiquetas crudas: {"username": "admin", "password": "x"}, {"domain": "lab.local"}.
+    """
+    labfile.set_service(_lab_out(path), device, service, enable=enable, fields=fields)
+    return f"{device}: servicio {service} {'on' if enable else 'off'}"
+
+
+@mcp.tool()
+def pt_add_dhcp_pool(
+    path: str,
+    device: str,
+    network: str,
+    gateway: str,
+    mask: str = "",
+    dns: str = "",
+    start_ip: str = "",
+    name: str = "",
+    max_users: int = 0,
+) -> str:
+    """Agrega un pool al servicio DHCP del equipo (la primera llamada llena el pool vacio)."""
+    labfile.add_dhcp_pool(
+        _lab_out(path), device, network, gateway, mask=mask, dns=dns, start_ip=start_ip, name=name,
+        max_users=max_users,
+    )
+    return f"{device}: pool {network} gw {gateway}"
+
+
+@mcp.tool()
+def pt_add_dns_record(
+    path: str,
+    device: str,
+    name: str,
+    address: str,
+    ttl: int = 86400,
+    record_type: str = "A-REC",
+) -> str:
+    """Agrega un registro al servicio DNS del equipo."""
+    labfile.add_dns_record(_lab_out(path), device, name, address, ttl=ttl, record_type=record_type)
+    return f"{device}: {name} -> {address}"
+
+
+@mcp.tool()
+def pt_add_aaa_user(path: str, device: str, username: str, password: str, description: str = "") -> str:
+    """Agrega un usuario al servidor AAA (ACS)."""
+    labfile.add_aaa_user(_lab_out(path), device, username, password, description)
+    return f"{device}: usuario {username}"
+
+
+@mcp.tool()
+def pt_add_aaa_client(
+    path: str,
+    device: str,
+    host_ip: str,
+    key: str,
+    description: str = "",
+    server_type: str = "RADIUS",
+) -> str:
+    """Registra un cliente AAA (ej. el router que autentica contra RADIUS)."""
+    labfile.add_aaa_client(
+        _lab_out(path), device, host_ip, key, description=description, server_type=server_type
+    )
+    return f"{device}: cliente {host_ip} ({server_type})"
+
+
+@mcp.tool()
+def pt_add_acl(path: str, device: str, acl: str, rules: list[str], kind: str = "extended") -> str:
+    """Agrega una ACL al equipo: numerada (1-99/100-199/1300-1999/2000-2699) o con nombre."""
+    labfile.add_acl(_lab_out(path), device, acl, rules, kind)
+    return f"{device}: ACL {acl} ({kind}, {len(rules)} reglas)"
+
+
+@mcp.tool()
+def pt_apply_acl(path: str, device: str, port: str, acl: str, direction: str = "in") -> str:
+    """Aplica una ACL a una interfaz del equipo (`ip access-group`)."""
+    labfile.apply_acl(_lab_out(path), device, port, acl, direction)
+    return f"{device}: {port} access-group {acl} {direction}"
+
+
+@mcp.tool()
+def pt_nat_static(path: str, device: str, inside_ip: str, outside_ip: str) -> str:
+    """NAT estatico uno a uno en el equipo."""
+    labfile.nat_static(_lab_out(path), device, inside_ip, outside_ip)
+    return f"{device}: nat static {inside_ip} -> {outside_ip}"
+
+
+@mcp.tool()
+def pt_nat_overload(path: str, device: str, acl: str, port: str) -> str:
+    """PAT (overload) del equipo: ACL + interfaz de salida."""
+    labfile.nat_overload(_lab_out(path), device, acl, port)
+    return f"{device}: nat overload list {acl} via {port}"
+
+
+@mcp.tool()
+def pt_nat_interface(path: str, device: str, port: str, side: str = "inside") -> str:
+    """Marca una interfaz del equipo como `ip nat inside` / `ip nat outside`."""
+    labfile.nat_interface(_lab_out(path), device, port, side)
+    return f"{device}: {port} nat {side}"
 
 
 def main() -> None:

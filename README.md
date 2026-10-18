@@ -11,9 +11,11 @@ quien usa el MCP.
 
 ## Alcance actual
 - Topologia **explicita**: `nodes` (equipos) + `links` (cables puerto a puerto), sin plantillas.
-- **Primitivas MCP**: crear/editar un `.pkt` equipo por equipo (agregar/quitar, cables copper/
-  crossover/serial, configs IOS crudas, modulos, wireless, config-register, OS) e inspeccionar
-  labs existentes.
+- **Primitivas MCP**: crear/editar un `.pkt` equipo por equipo (agregar/quitar/clonar/renombrar,
+  mover, prender/apagar, cables copper/crossover/serial, configs IOS crudas, modulos, wireless,
+  config-register, OS) e inspeccionar labs existentes.
+- **Servicios y seguridad**: servicios del Server-PT (HTTP/HTTPS, DNS, TFTP, NTP, email, syslog,
+  AAA/RADIUS, DHCP con pools) y ACL/NAT (estatico, overload) como tools.
 - Catalogo: routers (2911/1941/2901/2811), switches L2 (2960-24TT/2950-24), switch L3 (3560-24PS),
   hosts (PC-PT/Server-PT/Laptop-PT) y Hub-PT; las primitivas aceptan **todos** los modelos del
   template del vendor (100+).
@@ -54,10 +56,20 @@ El agente conversa y opera todo por tools.
 - `pt_new` — crea un `.pkt` vacio; `pt_devices` — lista los equipos.
 - `pt_add_device` / `pt_remove_device` — agregar/quitar equipos (cualquier modelo, con config
   IOS y red de host); `pt_add_link` — cables copper/crossover/serial (DCE con clock rate).
+- `pt_clone_device` / `pt_rename_device` / `pt_move_device` / `pt_set_power` — duplicar (config
+  incluida), renombrar, ubicar y prender/apagar equipos.
 - `pt_config` — lineas IOS crudas; `pt_set_host` / `pt_set_dhcp` — red del host.
 - `pt_set_wireless` — SSID/seguridad (AP, router o cliente); `pt_install_module` — modulos (HWIC...).
 - `pt_set_config_register` / `pt_set_os` — registro de configuracion e imagen de boot.
 - `pt_inspect` — lee un `.pkt`: equipos, IPs, configs, pools y enlaces.
+
+**Servicios y seguridad:**
+- `pt_set_service` — prender/apagar y configurar servicios (http, https, dns, tftp, ntp, syslog,
+  email, aaa, dhcp) con campos crudos.
+- `pt_add_dhcp_pool`, `pt_add_dns_record`, `pt_add_aaa_user`, `pt_add_aaa_client` — pool DHCP,
+  registros DNS y usuarios/clientes AAA (RADIUS) del Server-PT.
+- `pt_add_acl` / `pt_apply_acl` — ACL standard/extended (numerada o con nombre) y `ip access-group`.
+- `pt_nat_static`, `pt_nat_overload`, `pt_nat_interface` — NAT estatico, PAT y `ip nat inside/outside`.
 
 Ejemplo de registro en Command Code (`cmd mcp add`):
 ```bash

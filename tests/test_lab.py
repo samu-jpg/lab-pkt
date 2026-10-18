@@ -169,3 +169,129 @@ def test_unknown_device_raises(tmp_path):
 def test_models_counts_ports():
     by_name = {m["model"]: m["ports"] for m in lab.models()["models"]}
     assert by_name["2911"] == 3 and by_name["PC-PT"] == 1
+
+
+def test_rename_device_keeps_links(tmp_path):
+    import pytest
+
+    p = _new(tmp_path)
+    lab.add_device(p, "2911", "R1")
+    lab.add_device(p, "2960-24TT", "SW1")
+    lab.add_link(p, "R1", "GigabitEthernet0/0", "SW1", "GigabitEthernet0/1")
+    lab.rename_device(p, "SW1", "ACCESO")
+    assert lab.device_names(p) == ["R1", "ACCESO"]
+    assert lab.inspect(p)["links"][0]["b"] == "ACCESO"
+    with pytest.raises(ValueError, match="ya existe"):
+        lab.rename_device(p, "R1", "ACCESO")
+
+
+def test_move_device(tmp_path):
+    p = _new(tmp_path)
+    lab.add_device(p, "PC-PT", "PC-A")
+    lab.move_device(p, "PC-A", 640, 480)
+    dev = lab.devices(p)[0]
+    assert (dev["x"], dev["y"]) == (640, 480)
+
+
+def test_set_power(tmp_path):
+    p = _new(tmp_path)
+    lab.add_device(p, "2911", "R1")
+    lab.set_power(p, "R1", False)
+    assert lab.inspect(p)["devices"][0]["power"] is False
+    lab.set_power(p, "R1", True)
+    assert "power" not in lab.inspect(p)["devices"][0]
+
+
+def test_clone_device_copies_config(tmp_path):
+    p = _new(tmp_path)
+    config = ["hostname R1", "interface GigabitEthernet0/0", " ip address 10.0.0.1 255.255.255.252"]
+    lab.add_device(p, "2911", "R1", config=config)
+    lab.clone_device(p, "R1", "R2", x=300, y=150)
+    assert lab.device_names(p) == ["R1", "R2"]
+    clone = lab.inspect(p)["devices"][1]
+    assert clone["model"] == "2911" and (clone["x"], clone["y"]) == (300, 150)
+    assert " ip address 10.0.0.1 255.255.255.252" in clone["config"]
+    lab.add_device(p, "2960-24TT", "SW1")
+    assert lab.device_names(p) == ["R1", "R2", "SW1"]
+
+
+def test_set_service(tmp_path):
+    import re
+
+    import pytest
+
+    p = _new(tmp_path)
+    lab.add_device(p, "Server-PT", "SRV1")
+    lab.set_service(p, "SRV1", "http", True, fields={"username": "admin", "password": "clave"})
+    xml = _xml(p)
+    assert "<USERNAME>admin</USERNAME>" in xml and "<PASSWORD>clave</PASSWORD>" in xml
+    lab.set_service(p, "SRV1", "http", False)
+    block = re.search(r"<HTTP_SERVER>.*?</HTTP_SERVER>", _xml(p), re.S).group(0)
+    assert "<ENABLED>0</ENABLED>" in block
+    with pytest.raises(ValueError, match="servicio desconocido"):
+        lab.set_service(p, "SRV1", "ftp", True)
+
+
+def test_set_service_missing_on_model(tmp_path):
+    import pytest
+
+    p = _new(tmp_path)
+    lab.add_device(p, "2911", "R1")
+    with pytest.raises(ValueError, match="no tiene el servicio"):
+        lab.set_service(p, "R1", "http", True)
+
+
+def test_add_dhcp_pool(tmp_path):
+    import re
+
+    p = _new(tmp_path)
+    lab.add_device(p, "Server-PT", "SRV1")
+    lab.add_dhcp_pool(p, "SRV1", "192.168.1.0/24", "192.168.1.1", dns="8.8.8.8")
+    lab.add_dhcp_pool(p, "SRV1", "192.168.2.0/24", "192.168.2.1", name="PISO2")
+    xml = _xml(p)
+    assert "<NAME>serverPool</NAME>" in xml and "<START_IP>192.168.1.10</START_IP>" in xml
+    assert "<NAME>PISO2</NAME>" in xml and "<NETWORK>192.168.2.0</NETWORK>" in xml
+    block = re.search(r"<DHCP_SERVER>.*?</DHCP_SERVER>", xml, re.S).group(0)
+    assert block.count("<POOL>") == 2
+    assert "<NETWORK>0.0.0.0</NETWORK>" not in block
+
+
+def test_add_dns_record(tmp_path):
+    p = _new(tmp_path)
+    lab.add_device(p, "Server-PT", "SRV1")
+    lab.add_dns_record(p, "SRV1", "web.lab", "192.168.1.50")
+    xml = _xml(p)
+    assert "<NAME>web.lab</NAME>" in xml and "<IPADDRESS>192.168.1.50</IPADDRESS>" in xml
+
+
+def test_add_aaa_user_and_client(tmp_path):
+    p = _new(tmp_path)
+    lab.add_device(p, "Server-PT", "SRV1")
+    lab.add_aaa_user(p, "SRV1", "alumno", "secreto", description="acceso ssh")
+    lab.add_aaa_client(p, "SRV1", "192.168.1.1", "claveradius", description="R1")
+    xml = _xml(p)
+    assert "<NAME>alumno</NAME>" in xml and "<PASSWORD>secreto</PASSWORD>" in xml
+    assert "<HOST_IP>192.168.1.1</HOST_IP>" in xml and "<KEY>claveradius</KEY>" in xml
+
+
+def test_add_acl_and_apply(tmp_path):
+    p = _new(tmp_path)
+    lab.add_device(p, "2911", "R1")
+    lab.add_acl(p, "R1", "100", ["permit ip 192.168.1.0 0.0.0.255 any"], "extended")
+    lab.apply_acl(p, "R1", "GigabitEthernet0/0", "100", "in")
+    cfg = lab.inspect(p)["devices"][0]["config"]
+    assert "access-list 100 permit ip 192.168.1.0 0.0.0.255 any" in cfg
+    assert " ip access-group 100 in" in cfg
+
+
+def test_nat_primitives(tmp_path):
+    p = _new(tmp_path)
+    lab.add_device(p, "2911", "R1")
+    lab.nat_static(p, "R1", "192.168.1.10", "200.1.1.10")
+    lab.nat_overload(p, "R1", "100", "GigabitEthernet0/0")
+    lab.nat_interface(p, "R1", "GigabitEthernet0/0", "outside")
+    lab.nat_interface(p, "R1", "GigabitEthernet0/1", "inside")
+    cfg = lab.inspect(p)["devices"][0]["config"]
+    assert "ip nat inside source static 192.168.1.10 200.1.1.10" in cfg
+    assert "ip nat inside source list 100 interface GigabitEthernet0/0 overload" in cfg
+    assert " ip nat outside" in cfg and " ip nat inside" in cfg

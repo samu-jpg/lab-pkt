@@ -8,11 +8,14 @@ lo que usan los metodos del vendor (`set_wireless`, `install_module`, `_append_c
 """
 from __future__ import annotations
 
+import copy
 import ipaddress
 import re
+import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from ptlab import ios
 from ptlab.vendorlib import SEED, lab_api, templates
 
 
@@ -232,6 +235,103 @@ def _drop(lab, els) -> None:
     lab._initial_devs = [el for el in lab._initial_devs if id(el) not in dropped]
 
 
+def rename_device(path: str | Path, device: str, new_name: str) -> Path:
+    """Renombra un equipo (los cables referencian save-ref-id, no el nombre)."""
+    lab, p = _lab(path)
+    if new_name in _names(lab):
+        raise ValueError(f"ya existe un equipo {new_name!r}")
+    el = _device(lab, device)
+    name_el = el.find("ENGINE/NAME")
+    if name_el is None:
+        raise ValueError(f"{device}: el equipo no tiene nombre editable")
+    name_el.text = new_name
+    name_el.set("translate", "true")
+    return _save(lab, p)
+
+
+def move_device(path: str | Path, device: str, x: int, y: int) -> Path:
+    """Mueve un equipo en el plano logico (x/y)."""
+    lab, p = _lab(path)
+    ws = _device(lab, device).find("WORKSPACE/LOGICAL")
+    if ws is None:
+        raise ValueError(f"{device}: el equipo no tiene posicion en el plano")
+    _put(ws, "X", str(x))
+    _put(ws, "Y", str(y))
+    return _save(lab, p)
+
+
+def set_power(path: str | Path, device: str, on: bool = True) -> Path:
+    """Prende/apaga un equipo (apagado, sus puertos quedan abajo)."""
+    lab, p = _lab(path)
+    eng = _device(lab, device).find("ENGINE")
+    if eng is None:
+        raise ValueError(f"{device}: el equipo no tiene ENGINE")
+    _put(eng, "POWER", "true" if on else "false")
+    return _save(lab, p)
+
+
+def clone_device(
+    path: str | Path,
+    source: str,
+    name: str,
+    x: int | None = None,
+    y: int | None = None,
+) -> Path:
+    """Duplica un equipo (config incluida) con nombre nuevo y lugar propio en el rack."""
+    lab, p = _lab(path)
+    if name in _names(lab):
+        raise ValueError(f"ya existe un equipo {name!r}")
+    src = _device(lab, source)
+    ws_src = src.find("WORKSPACE/LOGICAL")
+    sx = int(ws_src.findtext("X")) if ws_src is not None and ws_src.findtext("X") else 100
+    sy = int(ws_src.findtext("Y")) if ws_src is not None and ws_src.findtext("Y") else 100
+    x = sx + 80 if x is None else x
+    y = sy if y is None else y
+
+    el = copy.deepcopy(src)
+    _free_sid(lab)
+    i = lab._n
+    lab._n += 1
+    leaf = str(uuid.uuid4())
+    px = lab._pos
+    lab._pos += 6
+    lab._add_leaf(name, leaf, x=px)
+    phys = "%s,%s,{%s}" % (lab._PP, lab._CID, leaf)
+
+    eng = el.find("ENGINE")
+    name_el = eng.find("NAME") if eng is not None else None
+    if name_el is not None:
+        name_el.text = name
+        name_el.set("translate", "true")
+    ws = el.find("WORKSPACE")
+    if ws is not None:
+        logical = ws.find("LOGICAL")
+        if logical is not None:
+            _put(logical, "X", str(x))
+            _put(logical, "Y", str(y))
+        phys_el = ws.find("PHYSICAL")
+        if phys_el is not None:
+            phys_el.text = phys
+        old_cpur = ws.find("PHYSICAL_CPUR")
+        if old_cpur is not None:
+            ws.remove(old_cpur)
+            cpur = ET.fromstring("<X>%s</X>" % lab._make_cpur(px))
+            idx = list(ws).index(phys_el) + 1 if phys_el is not None else len(list(ws))
+            for child in list(cpur):
+                ws.insert(idx, child)
+                idx += 1
+    for e in list(eng.findall("SAVE_REF_ID")):
+        eng.remove(e)
+    sid = "save-ref-id:%d" % (9_900_000_000_000_000_000 + i)
+    ET.SubElement(eng, "SAVE_REF_ID").text = sid
+    for tag in ("MACADDRESS", "BIA"):
+        for e in el.iter(tag):
+            e.text = lab._next_mac()
+    lab.devs.append(el)
+    lab._els[sid] = el
+    return _save(lab, p)
+
+
 # --------------------------------------------------------------------------- #
 #  Cables
 # --------------------------------------------------------------------------- #
@@ -386,6 +486,220 @@ def install_module(path: str | Path, device: str, module: str, bay: int = 0) -> 
         raise ValueError(f"modulo desconocido {module!r}: usa pt_list_models")
     lab, p = _lab(path)
     lab.install_module(_sid(lab, device), module, bay)
+    return _save(lab, p)
+
+
+# --------------------------------------------------------------------------- #
+#  Servicios de red (Server-PT y equipos con servicios)
+# --------------------------------------------------------------------------- #
+
+SERVICES = {
+    "http": "HTTP_SERVER",
+    "https": "HTTPS_SERVER",
+    "dns": "DNS_SERVER",
+    "tftp": "TFTP_SERVER",
+    "ntp": "NTP_SERVER",
+    "syslog": "SYSLOG_SERVER",
+    "email": "EMAIL_SERVER",
+    "aaa": "ACS_SERVER",
+    "dhcp": "DHCP_SERVER",
+}
+
+
+def _service_el(el, service: str):
+    tag = SERVICES.get(service)
+    if tag is None:
+        raise ValueError(f"servicio desconocido {service!r}: usa uno de {', '.join(SERVICES)}")
+    svc = next((s for s in el.iter(tag)), None)
+    if svc is None:
+        raise ValueError(
+            f"{(el.findtext('ENGINE/NAME') or '?')}: el modelo no tiene el servicio {service!r}"
+        )
+    return svc
+
+
+def set_service(
+    path: str | Path,
+    device: str,
+    service: str,
+    enable: bool = True,
+    fields: dict[str, str] | None = None,
+) -> Path:
+    """Prende/apaga y configura un servicio: http, https, dns, tftp, ntp, syslog, email, aaa, dhcp.
+
+    `fields` pisa etiquetas crudas del servicio, ej. {"username": "admin", "password": "x"}
+    para HTTP, {"domain": "lab.local"} para email, {"key": "ciscosecret"} para AAA.
+    """
+    lab, p = _lab(path)
+    svc = _service_el(_device(lab, device), service)
+    if service == "https":
+        _put(svc, "HTTPSENABLED", "1" if enable else "0")
+    elif service == "email":
+        _put(svc, "SMTP_ENABLED", "1" if enable else "0")
+        _put(svc, "POP3_ENABLED", "1" if enable else "0")
+    else:
+        _put(svc, "ENABLED", "1" if enable else "0")
+    for key, value in (fields or {}).items():
+        _put(svc, key.upper(), str(value))
+    return _save(lab, p)
+
+
+def add_dhcp_pool(
+    path: str | Path,
+    device: str,
+    network: str,
+    gateway: str,
+    mask: str = "",
+    dns: str = "",
+    start_ip: str = "",
+    name: str = "",
+    max_users: int = 0,
+) -> Path:
+    """Agrega un pool al servicio DHCP del equipo.
+
+    La primera llamada llena el pool vacio que trae la plantilla; despues agrega pools nuevos.
+    """
+    lab, p = _lab(path)
+    svc = _service_el(_device(lab, device), "dhcp")
+    pools = svc.find("POOLS")
+    if pools is None or pools.find("POOL") is None:
+        raise ValueError(f"{device}: el servicio DHCP no tiene plantilla de pools")
+    net = ipaddress.ip_network(network, strict=False)
+    start = start_ip or str(net.network_address + 10)
+    users = max_users or 240
+    existing = pools.findall("POOL")
+    filling = len(existing) == 1 and (existing[0].findtext("NETWORK") or "") in ("", "0.0.0.0")
+    node = ET.fromstring(ET.tostring(existing[0] if filling else existing[-1]))
+    values = {
+        "NAME": name or ("serverPool" if filling else f"pool{len(existing) + 1}"),
+        "NETWORK": str(net.network_address),
+        "MASK": mask or str(net.netmask),
+        "DEFAULT_ROUTER": gateway,
+        "TFTP_ADDRESS": "0.0.0.0",
+        "START_IP": start,
+        "END_IP": str(ipaddress.ip_address(start) + users),
+        "DNS_SERVER": dns or "0.0.0.0",
+        "MAX_USERS": str(users),
+    }
+    for tag, value in values.items():
+        _put(node, tag, value)
+    if filling:
+        idx = list(pools).index(existing[0])
+        pools.remove(existing[0])
+        pools.insert(idx, node)
+    else:
+        pools.append(node)
+    _put(svc, "ENABLED", "1")
+    return _save(lab, p)
+
+
+def add_dns_record(
+    path: str | Path,
+    device: str,
+    name: str,
+    address: str,
+    ttl: int = 86400,
+    record_type: str = "A-REC",
+) -> Path:
+    """Agrega un registro al servicio DNS (`NAMESERVER-DATABASE`)."""
+    lab, p = _lab(path)
+    svc = _service_el(_device(lab, device), "dns")
+    db = svc.find("NAMESERVER-DATABASE")
+    if db is None:
+        db = ET.SubElement(svc, "NAMESERVER-DATABASE")
+    rec = ET.SubElement(db, "RESOURCE-RECORD")
+    for tag, value in (("TYPE", record_type), ("NAME", name), ("TTL", str(ttl)), ("IPADDRESS", address)):
+        ET.SubElement(rec, tag).text = value
+    return _save(lab, p)
+
+
+def add_aaa_user(path: str | Path, device: str, username: str, password: str, description: str = "") -> Path:
+    """Agrega un usuario al servidor AAA (`ACS_SERVER/USERS`)."""
+    lab, p = _lab(path)
+    svc = _service_el(_device(lab, device), "aaa")
+    users = svc.find("USERS")
+    if users is None:
+        users = ET.SubElement(svc, "USERS")
+    template = users.find("USER")
+    node = (
+        ET.fromstring(ET.tostring(template))
+        if template is not None
+        else ET.fromstring("<USER><NAME/><PASSWORD/><DESCRIPTION/></USER>")
+    )
+    for tag, value in (("NAME", username), ("PASSWORD", password), ("DESCRIPTION", description)):
+        _put(node, tag, value)
+    users.append(node)
+    return _save(lab, p)
+
+
+def add_aaa_client(
+    path: str | Path,
+    device: str,
+    host_ip: str,
+    key: str,
+    description: str = "",
+    server_type: str = "RADIUS",
+) -> Path:
+    """Registra un cliente AAA (`ACS_SERVER/ACS_CLIENTS`, ej. el router RADIUS)."""
+    lab, p = _lab(path)
+    svc = _service_el(_device(lab, device), "aaa")
+    clients = svc.find("ACS_CLIENTS")
+    if clients is None:
+        clients = ET.SubElement(svc, "ACS_CLIENTS")
+    template = clients.find("CLIENT")
+    node = (
+        ET.fromstring(ET.tostring(template))
+        if template is not None
+        else ET.fromstring("<CLIENT><HOST_IP/><KEY/><DESCRIPTION/><SERVER_TYPE/></CLIENT>")
+    )
+    for tag, value in (
+        ("HOST_IP", host_ip),
+        ("KEY", key),
+        ("DESCRIPTION", description),
+        ("SERVER_TYPE", server_type),
+    ):
+        _put(node, tag, value)
+    clients.append(node)
+    return _save(lab, p)
+
+
+# --------------------------------------------------------------------------- #
+#  ACL / NAT (lineas IOS)
+# --------------------------------------------------------------------------- #
+
+
+def add_acl(path: str | Path, device: str, acl: str, rules: list[str], kind: str = "extended") -> Path:
+    """Agrega una ACL (numerada o con nombre) al equipo."""
+    lab, p = _lab(path)
+    lab._append_config(_sid(lab, device), ios.acl_lines(acl, rules, kind))
+    return _save(lab, p)
+
+
+def apply_acl(path: str | Path, device: str, port: str, acl: str, direction: str = "in") -> Path:
+    """Aplica una ACL a una interfaz del equipo (`ip access-group`)."""
+    lab, p = _lab(path)
+    lab._append_config(_sid(lab, device), ios.acl_apply_lines(port, acl, direction))
+    return _save(lab, p)
+
+
+def nat_static(path: str | Path, device: str, inside_ip: str, outside_ip: str) -> Path:
+    """NAT estatico uno a uno en el equipo."""
+    lab, p = _lab(path)
+    lab._append_config(_sid(lab, device), ios.nat_static_lines(inside_ip, outside_ip))
+    return _save(lab, p)
+
+
+def nat_overload(path: str | Path, device: str, acl: str, port: str) -> Path:
+    """PAT (overload) del equipo: ACL + interfaz de salida."""
+    lab, p = _lab(path)
+    lab._append_config(_sid(lab, device), ios.nat_overload_lines(acl, port))
+    return _save(lab, p)
+
+
+def nat_interface(path: str | Path, device: str, port: str, side: str = "inside") -> Path:
+    """Marca una interfaz del equipo como `ip nat inside` / `ip nat outside`."""
+    lab, p = _lab(path)
+    lab._append_config(_sid(lab, device), ios.nat_interface_lines(port, side))
     return _save(lab, p)
 
 

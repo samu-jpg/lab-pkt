@@ -282,3 +282,70 @@ def test_plan_graph_l3_switch_as_router():
     )
     cfg = plan(parse_spec(spec)).device("L3SW").config
     assert "ip routing" in cfg and " no switchport" in cfg
+
+
+# --------------------------------- ios (ACL/NAT) ----------------------------------- #
+
+
+def test_acl_lines_numeric_and_named():
+    from ptlab import ios
+
+    assert ios.acl_lines("110", ["permit ip any any"], "extended") == [
+        "access-list 110 permit ip any any",
+        "!",
+    ]
+    assert ios.acl_lines("BLOQUEA", ["deny tcp any any eq 80", "permit ip any any"]) == [
+        "ip access-list extended BLOQUEA",
+        " deny tcp any any eq 80",
+        " permit ip any any",
+        "!",
+    ]
+
+
+def test_acl_lines_validates():
+    import pytest
+
+    from ptlab import ios
+
+    with pytest.raises(ValueError, match="no es valido"):
+        ios.acl_lines("10", ["permit ip any any"], "extended")
+    with pytest.raises(ValueError, match="reglas"):
+        ios.acl_lines("100", [], "extended")
+    with pytest.raises(ValueError, match="standard|extended"):
+        ios.acl_lines("100", ["permit ip any any"], "otra")
+
+
+def test_acl_apply_lines_validates_direction():
+    import pytest
+
+    from ptlab import ios
+
+    assert ios.acl_apply_lines("GigabitEthernet0/0", "100") == [
+        "interface GigabitEthernet0/0",
+        " ip access-group 100 in",
+        "!",
+    ]
+    with pytest.raises(ValueError, match="in|out"):
+        ios.acl_apply_lines("GigabitEthernet0/0", "100", "arriba")
+
+
+def test_nat_lines():
+    import pytest
+
+    from ptlab import ios
+
+    assert ios.nat_static_lines("192.168.1.10", "200.1.1.10") == [
+        "ip nat inside source static 192.168.1.10 200.1.1.10",
+        "!",
+    ]
+    assert ios.nat_overload_lines("100", "GigabitEthernet0/0") == [
+        "ip nat inside source list 100 interface GigabitEthernet0/0 overload",
+        "!",
+    ]
+    assert ios.nat_interface_lines("GigabitEthernet0/1", "outside") == [
+        "interface GigabitEthernet0/1",
+        " ip nat outside",
+        "!",
+    ]
+    with pytest.raises(ValueError, match="inside|outside"):
+        ios.nat_interface_lines("GigabitEthernet0/1", "afuera")

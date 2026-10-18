@@ -146,3 +146,47 @@ def switch_config(
         lines += [f"interface Vlan{vid}", f" ip address {ip} {mask}", " no shutdown", "!"]
     lines.append("end")
     return lines
+
+
+def acl_lines(acl: str, rules: list[str], kind: str = "extended") -> list[str]:
+    """ACL standard/extended, numerada (1-99/100-199/1300-1999/2000-2699) o con nombre.
+
+    Las reglas son el texto que va despues del numero/ACL, ej.
+    "permit tcp 192.168.1.0 0.0.0.255 any eq 80".
+    """
+    if kind not in ("standard", "extended"):
+        raise ValueError(f"kind debe ser standard|extended, no {kind!r}")
+    rules = [rule.strip() for rule in rules if rule.strip()]
+    if not rules:
+        raise ValueError("la ACL no tiene reglas")
+    if acl.isdigit():
+        numero = int(acl)
+        rangos = {"standard": ((1, 99), (1300, 1999)), "extended": ((100, 199), (2000, 2699))}
+        if not any(a <= numero <= b for a, b in rangos[kind]):
+            raise ValueError(f"el numero {numero} no es valido para una ACL {kind}: {rangos[kind]}")
+        return [f"access-list {acl} {rule}" for rule in rules] + ["!"]
+    return [f"ip access-list {kind} {acl}", *[f" {rule}" for rule in rules], "!"]
+
+
+def acl_apply_lines(port: str, acl: str, direction: str = "in") -> list[str]:
+    """Aplica una ACL a una interfaz (`ip access-group`)."""
+    if direction not in ("in", "out"):
+        raise ValueError(f"direction debe ser in|out, no {direction!r}")
+    return [f"interface {port}", f" ip access-group {acl} {direction}", "!"]
+
+
+def nat_static_lines(inside: str, outside: str) -> list[str]:
+    """NAT estatico (uno a uno)."""
+    return [f"ip nat inside source static {inside} {outside}", "!"]
+
+
+def nat_overload_lines(acl: str, port: str) -> list[str]:
+    """PAT (overload) con una ACL y la interfaz de salida."""
+    return [f"ip nat inside source list {acl} interface {port} overload", "!"]
+
+
+def nat_interface_lines(port: str, side: str = "inside") -> list[str]:
+    """Marca la interfaz como `ip nat inside` / `ip nat outside`."""
+    if side not in ("inside", "outside"):
+        raise ValueError(f"side debe ser inside|outside, no {side!r}")
+    return [f"interface {port}", f" ip nat {side}", "!"]

@@ -44,6 +44,20 @@ EXPECTED = {
     "pt_install_module",
     "pt_remove_device",
     "pt_inspect",
+    "pt_rename_device",
+    "pt_move_device",
+    "pt_set_power",
+    "pt_clone_device",
+    "pt_set_service",
+    "pt_add_dhcp_pool",
+    "pt_add_dns_record",
+    "pt_add_aaa_user",
+    "pt_add_aaa_client",
+    "pt_add_acl",
+    "pt_apply_acl",
+    "pt_nat_static",
+    "pt_nat_overload",
+    "pt_nat_interface",
 }
 
 
@@ -83,6 +97,51 @@ async def main() -> int:
                 ("pt_build", {"spec": SPEC, "name": "mcp_smoke"}),
                 ("pt_new", {"name": "mcp_smoke_lab"}),
                 ("pt_add_device", {"path": "mcp_smoke_lab", "model": "2911", "name": "R1"}),
+                ("pt_add_device", {"path": "mcp_smoke_lab", "model": "Server-PT", "name": "SRV1"}),
+                (
+                    "pt_add_link",
+                    {
+                        "path": "mcp_smoke_lab",
+                        "a": "R1",
+                        "a_port": "GigabitEthernet0/0",
+                        "b": "SRV1",
+                        "b_port": "FastEthernet0",
+                    },
+                ),
+                ("pt_set_service", {"path": "mcp_smoke_lab", "device": "SRV1", "service": "http"}),
+                (
+                    "pt_add_dhcp_pool",
+                    {
+                        "path": "mcp_smoke_lab",
+                        "device": "SRV1",
+                        "network": "192.168.1.0/24",
+                        "gateway": "192.168.1.1",
+                    },
+                ),
+                (
+                    "pt_add_acl",
+                    {
+                        "path": "mcp_smoke_lab",
+                        "device": "R1",
+                        "acl": "100",
+                        "rules": ["permit ip any any"],
+                    },
+                ),
+                (
+                    "pt_apply_acl",
+                    {
+                        "path": "mcp_smoke_lab",
+                        "device": "R1",
+                        "port": "GigabitEthernet0/0",
+                        "acl": "100",
+                    },
+                ),
+                (
+                    "pt_clone_device",
+                    {"path": "mcp_smoke_lab", "source": "R1", "name": "R2", "x": 300, "y": 150},
+                ),
+                ("pt_rename_device", {"path": "mcp_smoke_lab", "device": "R2", "new_name": "R-BORDE"}),
+                ("pt_set_power", {"path": "mcp_smoke_lab", "device": "R-BORDE", "on": False}),
                 ("pt_inspect", {"path": "mcp_smoke_lab"}),
             ]
             for name, args in calls:

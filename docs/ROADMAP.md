@@ -10,40 +10,35 @@ operaciones largas corren como jobs en segundo plano (start -> status -> resulta
 ## Estado actual (base sobre la que se construye)
 
 - Spec **explicita**: `nodes` (equipos) + `links` (cables puerto a puerto). Sin modo "N sedes" ni
-  topologias predefinidas (se retiraron junto con los ejemplos de ejercicios).
-- **Primitivas de Packet Tracer como tools**: `pt_new`, `pt_devices`, `pt_add_device`,
-  `pt_remove_device`, `pt_add_link` (copper/crossover/serial con DCE y clock rate), `pt_config`
-  (IOS crudo), `pt_set_host`, `pt_set_dhcp`, `pt_set_wireless` (AP/router y clientes),
-  `pt_install_module`, `pt_set_config_register`, `pt_set_os`, `pt_inspect` (leer un `.pkt`).
-  Aceptan **todos** los modelos/modulos del vendor (100+ modelos, no una lista fija).
-- Routing `static`/`rip`/`ospf`/`eigrp`/`bgp`; DHCP (pools por router + relay con Server-PT);
-  VLANs con access/trunk/SVI y router-on-a-stick; switch L3 con `ip routing`.
-- Preview SVG con iconos reales de Packet Tracer leidos de la instalacion local (no se shippean
-  assets de Cisco en el repo).
-- 42 tests verdes (un test por prima y por funcion del planner) + smoke test del MCP (18 tools).
+  topologias predefinidas.
+- **Primitivas de Packet Tracer como tools**: lab nuevo/abrir, equipos (agregar, quitar, clonar
+  con config incluida, renombrar, mover, prender/apagar), cables (copper/crossover/serial con DCE
+  y clock rate), config IOS cruda, red del host, wireless (AP/router y clientes), modulos,
+  config-register, OS e inspeccion de `.pkt`. Aceptan **todos** los modelos/modulos del vendor.
+- **Servicios**: Server-PT con HTTP/HTTPS, DNS (registros), DHCP (pools), AAA/RADIUS (usuarios y
+  clientes), y toggles/campos para TFTP, NTP, email y syslog.
+- **ACL/NAT**: ACL standard/extended numerada o con nombre, `ip access-group`, NAT estatico, PAT
+  (overload) e `ip nat inside/outside`.
+- Routing `static`/`rip`/`ospf`/`eigrp`/`bgp`; DHCP (pools por router + relay); VLANs con
+  access/trunk/SVI y router-on-a-stick; switch L3 con `ip routing` (todo esto en la spec).
+- Preview SVG con iconos reales de Packet Tracer leidos de la instalacion local.
+- 57 tests verdes (un test por primitiva y por funcion del planner) + smoke del MCP (32 tools).
 - Publicado en GitHub (`samu-jpg/lab-pkt`): vendor como submodulo fijado a `ad9c38b`, LICENSE
   GPL-3.0-or-later, metadata completa en `pyproject.toml`.
 
-## Fase 1 — Primitivas (hecho)
+## Fase 2 — Cobertura Packet Tracer (lo que queda)
 
-- Lab como archivo: crear vacio, abrir existente, guardar; equipos con nombre libre y sin
-  colisiones de `save-ref-id` entre llamadas.
-- Equipos: agregar/quitar (quita tambien cables y el leaf del rack fisico), modelos del vendor.
-- Cables: copper (straight), crossover y serial (DCE + clock rate automatico).
-- Config: lineas IOS crudas por equipo, red del host (estatica/DHCP), wireless, registro de
-  configuracion, imagen de OS y modulos.
-- Inspeccion: resumen de equipos (modelo, IP, config, pools, wireless) y enlaces.
-
-## Fase 2 — Cobertura Packet Tracer (casi todo lo que se puede hacer)
-
-- ACLs (standard/extended/named), NAT/PAT (static, dynamic, overload) como primitivas.
-- En la spec: cable serial y switch L3 con VLANs (hoy bloqueados ahi; las primitivas ya pueden).
-- Servicios Server-PT: HTTP, DNS, TFTP, NTP, Email, Syslog (el builder ya inyecta el XML del DHCP).
-- Wireless: WLC 3504 y APs con seguridad (hoy: SSID basico via primitivas).
-- IoT: MCU, sensores/actuadores, home gateway, registration server.
+- Actividades `.pka`: el vendor trae `activity.py` (instrucciones, password, permisos, red inicial
+  y de respuesta) y `scoring.py` (arbol de correccion clonando nodos de una actividad de
+  referencia). Requiere un `.pka` de referencia propio; usar solo para labs propios (ver Legal).
+- Harvest de modelos: `harvest_library.py` extrae plantillas de tus propios `.pkt`, para sumar
+  equipos que no vengan en el template del vendor.
+- IoT (MCU, sensores/actuadores ya agregables; falta la programacion del MCU y el registro en el
+  servidor IoT) y VoIP (telefonos IP).
+- WLC 3504 y seguridad inalambrica avanzada (hoy: SSID/canal/password en AP y clientes).
+- En la spec: cable serial y switch L3 con VLANs (en las primitivas ya funcionan).
+- IPv6: direccionamiento, SLAAC/DHCPv6, OSPFv3/EIGRPv6.
 - Cloud/modem/ISP (Cloud-PT, DSL/cable) y firewall ASA basico.
-- IPv6: direccionamiento, SLAAC/DHCPv6, OSPFv3/EIGRPv6/IPv6 estatico.
-- Actividades (`.pka`) si el vendor lo permite.
 
 ## Fase 3 — GitHub (portafolio)
 
@@ -61,11 +56,13 @@ operaciones largas corren como jobs en segundo plano (start -> status -> resulta
   ajustes de color, OCR opcional, thumbnails.
 - **captura-mcp** (mss/ffmpeg x11grab): screenshot de pantalla/ventana/region, grabacion de
   pantalla, OCR — cubre "abre, captura, revisa, modifica" sin UI.
+- **docs-mcp** (docx/xlsx) y **ns3-mcp** (correr simulaciones ns-3 en background, parsear trazas,
+  generar netanim).
 - Estandar comun: layout `src/`, tests, ruff, README con demo, CI, licencia permisiva
   (MIT/Apache-2.0 salvo que se reutilice codigo GPL), PyPI + MCP registry.
 
 ## Proximo paso inmediato
 
-1. Fase 2: ACL/NAT como primitivas + serial y L3 con VLANs en la spec, con tests.
+1. Fase 2: actividades `.pka` + harvest de modelos + IoT, con tests.
 2. CI (GitHub Actions) + README en ingles para el portafolio.
 3. Arrancar el segundo MCP (video-mcp) con la misma estructura.
