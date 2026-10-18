@@ -1,0 +1,45 @@
+name: graph_vlan
+routing: ospf          # none | static | rip | ospf | eigrp | bgp (tambien se puede pisar por nodo)
+ospf_process: 1
+ospf_area: 0
+nodes:
+  - name: R1
+    model: 2911
+    x: 360
+    y: 170
+    dhcp: true         # pools DHCP en cada LAN /24 del router
+    interfaces:
+      - {port: GigabitEthernet0/0, ip: 10.0.0.1/30}                          # enlace WAN a R2
+      - {port: GigabitEthernet0/1.10, ip: 192.168.10.1/24, dot1q: 10}        # router-on-a-stick
+      - {port: GigabitEthernet0/1.20, ip: 192.168.20.1/24, dot1q: 20}
+  - name: SW1
+    model: 2960-24TT
+    x: 360
+    y: 360
+    vlans:
+      - {id: 10, name: VENTAS}
+      - {id: 20, name: ADMIN}
+    access:
+      - {port: FastEthernet0/1, vlan: 10}
+      - {port: FastEthernet0/2, vlan: 20}
+    trunks: [GigabitEthernet0/1]
+  - {name: PC1, model: PC-PT, x: 240, y: 540, dhcp: true}
+  - {name: PC2, model: PC-PT, x: 440, y: 540, dhcp: true}
+  - name: R2
+    model: 2911
+    x: 780
+    y: 170
+    interfaces:
+      - {port: GigabitEthernet0/0, ip: 10.0.0.2/30}
+      - {port: GigabitEthernet0/1, ip: 192.168.30.1/24}
+  - {name: SW2, model: 2960-24TT, x: 780, y: 360}
+  - {name: PC3, model: PC-PT, x: 700, y: 540, ip: 192.168.30.10/24, gateway: 192.168.30.1}
+  - {name: SRV1, model: Server-PT, x: 900, y: 540, ip: 192.168.30.11/24, gateway: 192.168.30.1}
+links:
+  - {a: R1, a_port: GigabitEthernet0/0, b: R2, b_port: GigabitEthernet0/0}
+  - {a: R1, a_port: GigabitEthernet0/1, b: SW1, b_port: GigabitEthernet0/1}
+  - {a: PC1, a_port: FastEthernet0, b: SW1, b_port: FastEthernet0/1}
+  - {a: PC2, a_port: FastEthernet0, b: SW1, b_port: FastEthernet0/2}
+  - {a: R2, a_port: GigabitEthernet0/1, b: SW2, b_port: GigabitEthernet0/1}
+  - {a: PC3, a_port: FastEthernet0, b: SW2, b_port: FastEthernet0/1}
+  - {a: SRV1, a_port: FastEthernet0, b: SW2, b_port: FastEthernet0/2}

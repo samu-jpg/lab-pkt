@@ -1,0 +1,10 @@
+name: guia_dhcp_relay
+routing: none
+dhcp: true
+dns: 8.8.8.8
+sites:
+  - name: RouterC
+    router_model: 2811
+    lans:
+      - {name: LAN_Izquierda, lan: 192.168.1.0/24, hosts: 1, dhcp: true}
+      - {name: LAN_Derecha, lan: 192.168.2.0/24, hosts: 1, dhcp: true, dhcp_server: true}

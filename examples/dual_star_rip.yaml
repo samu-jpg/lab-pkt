@@ -1,0 +1,8 @@
+name: lab_doble_estrella_rip
+topology: dual_star
+routing: rip
+dhcp: false
+sites:
+  - {name: Nucleo1, lan: 192.168.21.0/24, hosts: 2}
+  - {name: Nucleo2, lan: 192.168.22.0/24, hosts: 2}
+  - {name: Sucursal, lan: 192.168.23.0/24, hosts: 3}

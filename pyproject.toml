@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ptlab"
+version = "0.1.0"
+description = "Asistente que disena topologias y genera archivos Packet Tracer (.pkt/.pka)"
+requires-python = ">=3.10"
+authors = [{ name = "Samu", email = "ssalgadoselva@gmail.com" }]
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: System :: Networking",
+]
+dependencies = ["pydantic>=2", "pyyaml>=6"]
+
+[project.urls]
+Repository = "https://github.com/samu-jpg/lab-pkt"
+Issues = "https://github.com/samu-jpg/lab-pkt/issues"
+
+[project.optional-dependencies]
+mcp = ["mcp>=2"]
+
+[project.scripts]
+ptlab = "ptlab.cli:main"
+ptlab-mcp = "ptlab.mcp_server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

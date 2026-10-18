@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ptlab — topologias Packet Tracer</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header>
+  <div class="logo"></div>
+  <h1>ptlab <span>— topologias Packet Tracer</span></h1>
+  <div class="main-tabs">
+    <button class="mtab active" data-view="editor">Editor</button>
+    <button class="mtab" data-view="fast">Rapido</button>
+  </div>
+  <span class="tag">lab .pkt listo para abrir</span>
+</header>
+
+<!-- ============================== EDITOR (modo grafo) ============================== -->
+<div id="view-editor">
+  <div class="card ed-toolbar">
+    <div class="ed-namewrap"><label for="ed-name">Laboratorio</label><input id="ed-name" type="text" value="lab"></div>
+    <div class="ed-proto"><label for="ed-routing">Enrutamiento global</label>
+      <select id="ed-routing">
+        <option value="none">Sin enrutamiento</option>
+        <option value="static">Rutas estaticas</option>
+        <option value="rip">RIP v2</option>
+        <option value="ospf">OSPF</option>
+        <option value="eigrp">EIGRP</option>
+        <option value="bgp">BGP (eBGP)</option>
+      </select>
+    </div>
+    <div class="ed-extras" id="ed-extras"></div>
+    <span class="sp"></span>
+    <span class="status-chip" id="ed-status">sin equipos</span>
+    <div class="tbtns">
+      <button class="act alt" id="ed-preview">Vista previa</button>
+      <button class="act go" id="ed-generate">Generar .pkt</button>
+      <button class="act ghost" id="ed-export" title="Descarga la spec del lab (JSON) para volver a importarla; el .pkt se baja con Generar">Exportar spec</button>
+      <button class="act ghost" id="ed-import-btn">Importar</button>
+      <input type="file" id="ed-import" accept=".json,.yaml,.yml,.txt" hidden>
+      <button class="act ghost" id="ed-clear">Limpiar</button>
+    </div>
+  </div>
+
+  <div class="editor-grid">
+    <aside class="card">
+      <h2 class="sec">Equipos</h2>
+      <div id="ed-palette"></div>
+      <div class="hint">Click para agregar al plano. Arrastra los equipos para ordenarlos.</div>
+      <div class="sep"></div>
+      <h2 class="sec">Cablear</h2>
+      <button class="act alt full" id="ed-connect">Conectar equipos</button>
+      <div class="hint" id="ed-connect-hint">Click en "Conectar" y despues en los dos equipos (elegis el puerto de cada uno).</div>
+    </aside>
+
+    <section class="card canvas-card">
+      <div class="pv-head">
+        <span class="t">Plano</span>
+        <div class="stats" id="ed-stats"></div>
+        <span class="sp"></span>
+        <button class="zbtn" id="ed-zin" title="Acercar">+</button>
+        <button class="zbtn" id="ed-zout" title="Alejar">−</button>
+        <button class="zbtn" id="ed-fit" title="Ajustar a la ventana">⤢</button>
+      </div>
+      <div class="pane" id="ed-pane">
+        <div id="ed-stage"></div>
+        <div class="empty" id="ed-empty">Agrega equipos desde la paleta para empezar</div>
+      </div>
+      <div id="ed-msg"></div>
+      <div class="problems" id="ed-problems" style="display:none"></div>
+      <a id="ed-dl"></a>
+    </section>
+
+    <aside class="card props-card">
+      <h2 class="sec" id="ed-props-title">Propiedades</h2>
+      <div id="ed-props"><div class="hint">Selecciona un equipo o un cable en el plano.</div></div>
+    </aside>
+  </div>
+</div>
+
+<!-- ============================== VISTA PREVIA (modal) ============================== -->
+<div class="overlay" id="ed-overlay" style="display:none">
+  <div class="modal card">
+    <div class="pv-head">
+      <span class="t">Vista previa</span>
+      <div class="stats" id="ed-pv-stats"></div>
+      <span class="sp"></span>
+      <span class="pv-hint">Arrastra los equipos para cambiar el orden y clickea un cable para reconectarlo.</span>
+      <button class="zbtn" id="ed-pv-zin" title="Acercar">+</button>
+      <button class="zbtn" id="ed-pv-zout" title="Alejar">−</button>
+      <button class="zbtn" id="ed-pv-fit" title="Ajustar">⤢</button>
+      <button class="act alt" id="ed-pv-refresh">Actualizar</button>
+      <button class="act go" id="ed-pv-generate">Generar .pkt</button>
+      <button class="act ghost" id="ed-pv-apply">Aplicar y cerrar</button>
+    </div>
+    <div class="modal-pane" id="ed-pv-pane">
+      <div id="ed-pv-stage"></div>
+      <div class="empty" id="ed-pv-empty">Generando vista previa…</div>
+    </div>
+    <div class="pv-msg" id="ed-pv-msg" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ============================== MODO RAPIDO (N sedes) ============================== -->
+<div class="wrap" id="view-fast" style="display:none">
+  <section class="card">
+    <h2 class="sec">Plantillas</h2>
+    <div class="presets" id="presets"></div>
+
+    <div class="sep"></div>
+
+    <div class="tabs">
+      <button class="tab active" data-mode="easy">Formulario</button>
+      <button class="tab" data-mode="adv">YAML / JSON</button>
+    </div>
+
+    <div id="easy">
+      <div class="grid">
+        <div><label for="nsites">Sedes (routers)</label><input id="nsites" type="number" min="1" max="12" value="3"></div>
+        <div><label for="nlans">LANs por sede</label><input id="nlans" type="number" min="1" max="4" value="1"></div>
+        <div><label for="nhosts">Hosts por LAN</label><input id="nhosts" type="number" min="0" max="16" value="3"></div>
+        <div><label for="rmodel">Modelo de router</label>
+          <select id="rmodel">
+            <option value="2911" selected>2911 (3 puertos)</option>
+            <option value="1941">1941 (2 puertos)</option>
+            <option value="2901">2901 (2 puertos)</option>
+            <option value="2811">2811 (2 FE)</option>
+            <option value="3560-24PS">3560-24PS (switch L3, 26)</option>
+          </select>
+        </div>
+        <div class="full"><label for="name">Nombre del laboratorio</label><input id="name" type="text" value="lab"></div>
+        <div class="full">
+          <label>Servicio DHCP</label>
+          <div class="seg" id="dhcpmode">
+            <button type="button" data-v="off">Sin DHCP (IPs fijas)</button>
+            <button type="button" data-v="router" class="active">Pools en cada router</button>
+            <button type="button" data-v="server">Servidor-PT + relay</button>
+          </div>
+        </div>
+        <div class="full" id="srvwrap" style="display:none">
+          <label for="srvsite">Sede con el Server-PT</label>
+          <select id="srvsite"></select>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+      <h2 class="sec">Topologia entre sedes</h2>
+      <div class="topos" id="topos"></div>
+
+      <div class="sep"></div>
+      <h2 class="sec">Enrutamiento</h2>
+      <select id="routing">
+        <option value="ospf" selected>OSPF (link-state)</option>
+        <option value="eigrp">EIGRP (vector distancia avanzado)</option>
+        <option value="rip">RIP v2 (vector distancia)</option>
+        <option value="bgp">BGP (entre sistemas autonomos)</option>
+        <option value="static">Rutas estaticas</option>
+        <option value="none">Sin enrutamiento</option>
+      </select>
+      <div class="proto-hint" id="protohint"></div>
+      <div class="extras" id="extras"></div>
+
+      <div class="sum" id="sum"></div>
+    </div>
+
+    <div id="adv" style="display:none">
+      <label for="spec">Spec de la topologia (YAML o JSON)</label>
+      <textarea id="spec" spellcheck="false"></textarea>
+      <div class="hint">La misma spec que arma el formulario, editable a mano: <code>lans</code>, <code>dhcp_server</code>, <code>router_model</code>, <code>as_number</code>, etc.</div>
+      <div class="row"><button class="act alt" onclick="applyYaml()">Traer al formulario</button></div>
+    </div>
+
+    <div class="row">
+      <button class="act alt" id="btnPreview" onclick="doPreview(true)">Ver preview</button>
+      <button class="act go" id="btnGen" onclick="doGenerate()">Generar .pkt</button>
+    </div>
+    <div id="msg"></div>
+    <a id="dl"></a>
+    <div class="hint">El .pkt se guarda en <code>/mnt/d/PT-Labs</code> y se abre directo en Packet Tracer. Tambien se puede descargar desde aca.</div>
+  </section>
+
+  <section class="card preview-card">
+    <div class="pv-head">
+      <span class="t">Preview</span>
+      <div class="stats" id="stats"></div>
+      <span class="sp"></span>
+      <div class="spinner" id="spin"></div>
+      <button class="zbtn" onclick="zoomBy(1.25)" title="Acercar">+</button>
+      <button class="zbtn" onclick="zoomBy(0.8)" title="Alejar">−</button>
+      <button class="zbtn" onclick="fit()" title="Ajustar a la ventana">⤢</button>
+      <button class="zbtn" onclick="reset()" title="Zoom 1:1">1:1</button>
+    </div>
+    <div class="pane" id="pane">
+      <div id="stage"></div>
+      <div class="empty" id="empty">Generando preview…</div>
+    </div>
+  </section>
+</div>
+
+<div class="picker" id="ed-picker" style="display:none">
+  <div class="picker-head" id="ed-picker-title"></div>
+  <div class="picker-body" id="ed-picker-body"></div>
+  <div class="picker-foot"><button class="mini" id="ed-picker-cancel">Cancelar</button></div>
+</div>
+
+<script src="/static/app.js"></script>
+<script src="/static/editor.js"></script>
+</body>
+</html>
