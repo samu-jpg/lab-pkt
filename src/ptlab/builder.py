@@ -7,25 +7,11 @@ from __future__ import annotations
 
 import copy
 import ipaddress
-import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from ptlab.planner import Plan, ServicePool
-
-VENDOR = Path(__file__).resolve().parents[2] / "vendor" / "packet-tracer-pkt-format"
-
-
-def _lab_api():
-    for path in (str(VENDOR), str(VENDOR / "tools"), str(VENDOR / "src")):
-        if path not in sys.path:
-            sys.path.insert(0, path)
-    from ptlab import codec
-
-    sys.modules["pt9"] = codec
-    import lab_api  # noqa: PLC0415
-
-    return lab_api
+from ptlab.vendorlib import VENDOR, lab_api as _lab_api
 
 
 def _set_host_dhcp(lab, dev_id: str) -> None:

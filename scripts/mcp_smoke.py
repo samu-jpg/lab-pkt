@@ -25,7 +25,26 @@ SPEC = (
     "  - {a: R1, a_port: GigabitEthernet0/1, b: SW1, b_port: GigabitEthernet0/1}\n"
     "  - {a: PC1, a_port: FastEthernet0, b: SW1, b_port: FastEthernet0/1}\n"
 )
-EXPECTED = {"pt_schema", "pt_list_models", "pt_plan", "pt_preview", "pt_build"}
+EXPECTED = {
+    "pt_schema",
+    "pt_list_models",
+    "pt_plan",
+    "pt_preview",
+    "pt_build",
+    "pt_new",
+    "pt_devices",
+    "pt_add_device",
+    "pt_add_link",
+    "pt_config",
+    "pt_set_host",
+    "pt_set_dhcp",
+    "pt_set_wireless",
+    "pt_set_config_register",
+    "pt_set_os",
+    "pt_install_module",
+    "pt_remove_device",
+    "pt_inspect",
+}
 
 
 def _text(result) -> str:
@@ -62,6 +81,9 @@ async def main() -> int:
                 ("pt_list_models", {}),
                 ("pt_plan", {"spec": SPEC}),
                 ("pt_build", {"spec": SPEC, "name": "mcp_smoke"}),
+                ("pt_new", {"name": "mcp_smoke_lab"}),
+                ("pt_add_device", {"path": "mcp_smoke_lab", "model": "2911", "name": "R1"}),
+                ("pt_inspect", {"path": "mcp_smoke_lab"}),
             ]
             for name, args in calls:
                 result = await session.call_tool(name, args)

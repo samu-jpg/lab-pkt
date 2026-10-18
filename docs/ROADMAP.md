@@ -11,44 +11,39 @@ operaciones largas corren como jobs en segundo plano (start -> status -> resulta
 
 - Spec **explicita**: `nodes` (equipos) + `links` (cables puerto a puerto). Sin modo "N sedes" ni
   topologias predefinidas (se retiraron junto con los ejemplos de ejercicios).
+- **Primitivas de Packet Tracer como tools**: `pt_new`, `pt_devices`, `pt_add_device`,
+  `pt_remove_device`, `pt_add_link` (copper/crossover/serial con DCE y clock rate), `pt_config`
+  (IOS crudo), `pt_set_host`, `pt_set_dhcp`, `pt_set_wireless` (AP/router y clientes),
+  `pt_install_module`, `pt_set_config_register`, `pt_set_os`, `pt_inspect` (leer un `.pkt`).
+  Aceptan **todos** los modelos/modulos del vendor (100+ modelos, no una lista fija).
 - Routing `static`/`rip`/`ospf`/`eigrp`/`bgp`; DHCP (pools por router + relay con Server-PT);
   VLANs con access/trunk/SVI y router-on-a-stick; switch L3 con `ip routing`.
 - Preview SVG con iconos reales de Packet Tracer leidos de la instalacion local (no se shippean
   assets de Cisco en el repo).
-- MCP con 5 tools (`pt_schema`, `pt_list_models`, `pt_plan`, `pt_preview`, `pt_build`) y smoke
-  test del servidor; CLI solo como apoyo de debug.
+- 42 tests verdes (un test por prima y por funcion del planner) + smoke test del MCP (18 tools).
 - Publicado en GitHub (`samu-jpg/lab-pkt`): vendor como submodulo fijado a `ad9c38b`, LICENSE
   GPL-3.0-or-later, metadata completa en `pyproject.toml`.
-- Tests verdes (`python3 -m pytest tests -q`).
 
-## Fase 1 — Primitivas de Packet Tracer como tools (el MCP como caja completa) — en curso
+## Fase 1 — Primitivas (hecho)
 
-El MCP debe exponer las funciones de las librerias (vendor `lab_api`) para que el agente haga lo
-que quiera, sin pasar por una spec:
-
-- `pt_lab_new` / `pt_lab_open`: crear un `.pkt` vacio o abrir uno existente.
-- `pt_add_device`, `pt_remove_device`, `pt_devices`: equipos (cualquier modelo del vendor).
-- `pt_add_link`: cables copper/crossover/serial (con DCE y clock rate).
-- `pt_config`: lineas IOS crudas a un equipo (escape hatch total).
-- `pt_set_host`: IP/mask/gateway/DHCP de un host; `pt_set_wireless`: SSID/WPA2/canal.
-- `pt_set_config_register`, `pt_set_os`, `pt_install_module`: registro, imagen y modulos.
-- `pt_inspect`: leer un `.pkt` y devolver equipos, IPs, configs y enlaces.
-- `pt_models`: modelos disponibles (dinamico desde `device_templates.json`, no una lista fija).
-- `pt_diff`: comparar dos specs o `.pkt`.
-- Prompts y resources MCP (schema, catalogo, ejemplos de armado paso a paso).
+- Lab como archivo: crear vacio, abrir existente, guardar; equipos con nombre libre y sin
+  colisiones de `save-ref-id` entre llamadas.
+- Equipos: agregar/quitar (quita tambien cables y el leaf del rack fisico), modelos del vendor.
+- Cables: copper (straight), crossover y serial (DCE + clock rate automatico).
+- Config: lineas IOS crudas por equipo, red del host (estatica/DHCP), wireless, registro de
+  configuracion, imagen de OS y modulos.
+- Inspeccion: resumen de equipos (modelo, IP, config, pools, wireless) y enlaces.
 
 ## Fase 2 — Cobertura Packet Tracer (casi todo lo que se puede hacer)
 
-- Enlaces: serial DCE/DTE con clock rate, fibra, consola.
-- Switch L3 con VLANs (hoy los L3 con VLAN estan bloqueados en la spec).
-- ACLs (standard/extended/named), NAT/PAT (static, dynamic, overload).
-- Port security, STP (rapid-pvst/portfast/BPDU guard), EtherChannel (LACP/PAgP), SSH, banners,
-  passwords, AAA local.
+- ACLs (standard/extended/named), NAT/PAT (static, dynamic, overload) como primitivas.
+- En la spec: cable serial y switch L3 con VLANs (hoy bloqueados ahi; las primitivas ya pueden).
 - Servicios Server-PT: HTTP, DNS, TFTP, NTP, Email, Syslog (el builder ya inyecta el XML del DHCP).
-- Wireless: WLC 3504, AP-PT, hosts inalambricos (SSID, WPA2, canales).
+- Wireless: WLC 3504 y APs con seguridad (hoy: SSID basico via primitivas).
 - IoT: MCU, sensores/actuadores, home gateway, registration server.
 - Cloud/modem/ISP (Cloud-PT, DSL/cable) y firewall ASA basico.
 - IPv6: direccionamiento, SLAAC/DHCPv6, OSPFv3/EIGRPv6/IPv6 estatico.
+- Actividades (`.pka`) si el vendor lo permite.
 
 ## Fase 3 — GitHub (portafolio)
 
@@ -71,7 +66,6 @@ que quiera, sin pasar por una spec:
 
 ## Proximo paso inmediato
 
-1. Fase 1: primitivas como tools (`pt_inspect` primero, el decode del vendor ya existe) + un test
-   por cada tool y smoke actualizado.
-2. Primer feature nuevo de Fase 2 (serial DCE/DTE + L3 con VLANs) con tests.
-3. CI + README en ingles para el portafolio.
+1. Fase 2: ACL/NAT como primitivas + serial y L3 con VLANs en la spec, con tests.
+2. CI (GitHub Actions) + README en ingles para el portafolio.
+3. Arrancar el segundo MCP (video-mcp) con la misma estructura.

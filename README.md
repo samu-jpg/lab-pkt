@@ -11,8 +11,12 @@ quien usa el MCP.
 
 ## Alcance actual
 - Topologia **explicita**: `nodes` (equipos) + `links` (cables puerto a puerto), sin plantillas.
+- **Primitivas MCP**: crear/editar un `.pkt` equipo por equipo (agregar/quitar, cables copper/
+  crossover/serial, configs IOS crudas, modulos, wireless, config-register, OS) e inspeccionar
+  labs existentes.
 - Catalogo: routers (2911/1941/2901/2811), switches L2 (2960-24TT/2950-24), switch L3 (3560-24PS),
-  hosts (PC-PT/Server-PT/Laptop-PT) y Hub-PT.
+  hosts (PC-PT/Server-PT/Laptop-PT) y Hub-PT; las primitivas aceptan **todos** los modelos del
+  template del vendor (100+).
 - IPs por interfaz (CIDR), subinterfaces dot1Q (router-on-a-stick), IPs de hosts estaticas o DHCP.
 - **VLANs** con access / trunk / SVI y router-on-a-stick; switch L3 con `ip routing`.
 - Routing `none`/`static`/`rip`/`ospf`/`eigrp`/`bgp` (global o por equipo, calculado sobre el grafo).
@@ -36,14 +40,24 @@ GPL-3.0 `packet-tracer-pkt-format`, integrado como **submodulo** en `vendor/`
 **GPL-3.0-or-later**.
 
 ## Uso — servidor MCP (interfaz principal)
-El agente conversa, arma la spec y llama a las tools. Comando del server (tras la instalacion):
-`ptlab-mcp` (o `python3 -m ptlab.mcp_server`).
+Comando del server (tras la instalacion): `ptlab-mcp` (o `python3 -m ptlab.mcp_server`).
+El agente conversa y opera todo por tools.
 
+**Spec -> .pkt / .svg** (describir el lab de una vez):
 - `pt_schema` — JSON schema de la spec (que campos acepta).
-- `pt_list_models` — modelos de equipos soportados, su rol y cantidad de puertos.
+- `pt_list_models` — catalogo de la spec + todos los modelos y modulos del vendor.
 - `pt_plan` — valida/planifica y muestra el resumen con direccionamiento.
 - `pt_preview` — genera el SVG.
 - `pt_build` — genera el `.pkt`.
+
+**Primitivas sobre un .pkt** (el agente hace lo que quiera, incluso abrir y retocar):
+- `pt_new` — crea un `.pkt` vacio; `pt_devices` — lista los equipos.
+- `pt_add_device` / `pt_remove_device` — agregar/quitar equipos (cualquier modelo, con config
+  IOS y red de host); `pt_add_link` — cables copper/crossover/serial (DCE con clock rate).
+- `pt_config` — lineas IOS crudas; `pt_set_host` / `pt_set_dhcp` — red del host.
+- `pt_set_wireless` — SSID/seguridad (AP, router o cliente); `pt_install_module` — modulos (HWIC...).
+- `pt_set_config_register` / `pt_set_os` — registro de configuracion e imagen de boot.
+- `pt_inspect` — lee un `.pkt`: equipos, IPs, configs, pools y enlaces.
 
 Ejemplo de registro en Command Code (`cmd mcp add`):
 ```bash
@@ -116,13 +130,16 @@ spec (YAML/JSON: nodes + links)
   -> planner   : valida, arma equipos/puertos, configs IOS y layout
   -> builder   : plantillas de equipos reales (vendor) -> XML -> cifrado -> .pkt
   -> preview   : SVG del plano
+
+primitivas:
+  pt_new/open -> lab_api (agregar equipos, cables, configs) -> .pkt
 ```
 El `.pkt` es un XML cifrado (zlib + XOR + Twofish-EAX). Se generan los `<RUNNINGCONFIG>` de cada
 equipo y la config de red de los hosts; Packet Tracer los aplica al abrir.
 
 ## Estructura
 ```
-src/ptlab/     catalog, spec, planner, ios, builder, preview, cli, mcp_server
+src/ptlab/     catalog, spec, planner, ios, builder, preview, lab, vendorlib, cli, mcp_server
 vendor/        packet-tracer-pkt-format (submodulo, GPL-3.0) — codec y plantillas reusadas
 docs/          roadmap
 spike/         pruebas de viabilidad del codec
@@ -130,11 +147,10 @@ spike/         pruebas de viabilidad del codec
 
 ## Limitaciones / proximos pasos
 - Sin ACL/NAT todavia (VLAN/trunk/SVI si).
-- Pendientes: cable serial (DCE/DTE), switch L3 con VLANs, wireless/IoT, IPv6.
+- En la spec: cable serial y switch L3 con VLANs pendientes (las primitivas ya hacen serial).
 - El DHCP del `Server-PT` se configura con pools y gateway/DNS; sin reservas ni opciones extra.
 - Sin deploy "live" directo a Packet Tracer (por ahora es por archivo).
-- Roadmap completo (primitivas de Packet Tracer como tools, cobertura PT y otros MCPs)
-  en `docs/ROADMAP.md`.
+- Roadmap completo (cobertura PT, CI y otros MCPs) en `docs/ROADMAP.md`.
 
 ## Legal
 Reutiliza un proyecto de ingenieria inversa del formato `.pkt`. Uso con **archivos propios**, para
