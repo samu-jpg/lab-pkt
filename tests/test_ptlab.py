@@ -186,29 +186,29 @@ def test_plan_graph_serial_not_supported():
 
 
 def test_plan_graph_build_end_to_end(tmp_path):
-    import pt9
+    from ptlab import codec
 
     out = build(plan(parse_spec(VLAN_GRAPH)), tmp_path / "g.pkt")
-    xml = pt9.decode_bytes(out.read_bytes(), "pkt").decode("utf-8", "replace")
+    xml = codec.decode_bytes(out.read_bytes()).decode("utf-8", "replace")
     assert "switchport access vlan 10" in xml
     assert "encapsulation dot1Q 10" in xml
     assert "interface GigabitEthernet0/1.10" in xml
 
 
 def test_plan_graph_crossover_cable(tmp_path):
-    import pt9
+    from ptlab import codec
 
     spec = GRAPH.replace("b_port: FastEthernet0/1", "b_port: FastEthernet0/1, cable: crossover")
     out = build(plan(parse_spec(spec)), tmp_path / "x.pkt")
-    xml = pt9.decode_bytes(out.read_bytes(), "pkt").decode("utf-8", "replace")
+    xml = codec.decode_bytes(out.read_bytes()).decode("utf-8", "replace")
     assert "eCrossOver" in xml
 
 
 def test_build_is_valid_container(tmp_path):
-    import pt9
+    from ptlab import codec
 
     out = build(plan(parse_spec(GRAPH)), tmp_path / "t.pkt")
-    xml = pt9.decode_bytes(out.read_bytes(), "pkt")
+    xml = codec.decode_bytes(out.read_bytes())
     assert b"PACKETTRACER5" in xml[:200]
     assert b'<NAME translate="true">R1</NAME>' in xml
 
