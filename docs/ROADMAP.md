@@ -46,9 +46,12 @@ operaciones largas corren como jobs en segundo plano (start -> status -> resulta
 
 ## Fase 3 — GitHub (portafolio)
 
-- Hecho: repo creado, vendor como submodulo, LICENSE, `.gitignore`, metadata de `pyproject.toml`.
-- CI (GitHub Actions): `pytest` + smoke del MCP en Python 3.10-3.13.
-- README publico (es/en) con demo (GIF/SVG del preview), badges, topics, CONTRIBUTING, releases.
+- Hecho: repo publico, vendor como submodulo, LICENSE, `.gitignore`, metadata de `pyproject.toml`.
+- Hecho: CI (GitHub Actions) con `pytest` + smoke del MCP en Python 3.10-3.13 (verde).
+- Hecho: README bilingue (ingles principal + `README.es.md`), badges, demo en `docs/demo.svg`,
+  CONTRIBUTING y tag `v0.1.0`.
+- Pendiente a mano en GitHub: description y topics del repo (no hay `gh` instalado) y releases
+  con notas.
 - Sin assets de Cisco en el repo; atribucion del vendor GPL y su origen.
 - Opcional: publicar en PyPI y registrar el MCP en el MCP registry.
 
@@ -67,6 +70,6 @@ operaciones largas corren como jobs en segundo plano (start -> status -> resulta
 
 ## Proximo paso inmediato
 
-1. CI (GitHub Actions) + README en ingles para el portafolio.
-2. Arrancar el segundo MCP (video-mcp) con la misma estructura.
-3. Scoring de `.pka` cuando haya una actividad de referencia.
+1. Arrancar el segundo MCP (video-mcp) con la misma estructura (tools + jobs en segundo plano).
+2. Scoring de `.pka` cuando haya una actividad de referencia.
+3. Opcional: PyPI + MCP registry; description y topics del repo a mano en GitHub.
