@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from ptlab.planner import Plan, ServicePool
-from ptlab.vendorlib import VENDOR, lab_api as _lab_api
+from ptlab.vendorlib import VENDOR, lab_api as _lab_api, templates
 
 
 def _set_host_dhcp(lab, dev_id: str) -> None:
@@ -66,7 +66,7 @@ def _set_crossover(lab) -> None:
 
 def build(plan: Plan, out_path: str | Path) -> Path:
     lab_api = _lab_api()
-    models, modules = lab_api.load_templates(str(VENDOR / "tools" / "device_templates.json"))
+    models, modules = templates()
     lab = lab_api.Lab(str(VENDOR / "tools" / "network_seed.xml"), models, modules)
     lab.prune_seed_devices()
 

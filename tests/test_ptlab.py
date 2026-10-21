@@ -349,3 +349,27 @@ def test_nat_lines():
     ]
     with pytest.raises(ValueError, match="inside|outside"):
         ios.nat_interface_lines("GigabitEthernet0/1", "afuera")
+
+
+def test_isr4331_uses_three_level_ports():
+    import pytest
+
+    from ptlab.catalog import MODELS
+
+    assert MODELS["ISR4331"].ports == (
+        "GigabitEthernet0/0/0",
+        "GigabitEthernet0/0/1",
+        "GigabitEthernet0/0/2",
+    )
+    p = plan(parse_spec("""
+name: isr
+nodes:
+  - {name: R1, model: ISR4331, interfaces: [{port: GigabitEthernet0/0/0, ip: 10.0.0.1/30}]}
+"""))
+    assert "interface GigabitEthernet0/0/0" in p.device("R1").config
+    with pytest.raises(ValueError, match="no existe"):
+        plan(parse_spec("""
+name: isr
+nodes:
+  - {name: R1, model: ISR4331, interfaces: [{port: GigabitEthernet0/0, ip: 10.0.0.1/30}]}
+"""))

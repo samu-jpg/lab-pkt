@@ -26,6 +26,8 @@ class Model:
 MODELS: dict[str, Model] = {
     # routers (interfaces arrancan en 0)
     "2911": Model("2911", ROUTER, ("GigabitEthernet0/0", "GigabitEthernet0/1", "GigabitEthernet0/2")),
+    "ISR4331": Model("ISR4331", ROUTER, ("GigabitEthernet0/0/0", "GigabitEthernet0/0/1", "GigabitEthernet0/0/2")),
+    "ISR4321": Model("ISR4321", ROUTER, ("GigabitEthernet0/0/0", "GigabitEthernet0/0/1")),
     "1941": Model("1941", ROUTER, ("GigabitEthernet0/0", "GigabitEthernet0/1")),
     "2901": Model("2901", ROUTER, ("GigabitEthernet0/0", "GigabitEthernet0/1")),
     "2811": Model("2811", ROUTER, ("FastEthernet0/0", "FastEthernet0/1")),
